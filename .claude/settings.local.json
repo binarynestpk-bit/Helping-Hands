@@ -5,7 +5,14 @@
       "Bash(git --version)",
       "Bash(git init:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(psql:*)",
+      "Read(//c/Users/hp/Pictures/helpinghand-backend/**)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
