@@ -1013,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Color(0xFF2A9D8F),
                   () {
                 Navigator.pop(context);
-                // Navigate to profile
+                Navigator.pushNamed(context, '/view-profile');
               },
               isSmallScreen: isSmallScreen,
             ),
@@ -1024,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Color(0xFF2A9D8F),
                   () {
                 Navigator.pop(context);
-                // Navigate to settings
+                Navigator.pushNamed(context, '/settings');
               },
               isSmallScreen: isSmallScreen,
             ),

@@ -31,6 +31,9 @@ import 'package:helpinghand/blood/blood_requests.dart';
 import 'package:helpinghand/blood/blood_requests_list.dart';
 import 'package:helpinghand/blood/blood_request_detail.dart';
 import 'package:helpinghand/blood/my_blood_requests.dart';
+import 'package:helpinghand/screens/view_profile_screen.dart';
+import 'package:helpinghand/screens/edit_profile_screen.dart';
+import 'package:helpinghand/screens/settings_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -57,6 +60,12 @@ class MyApp extends StatelessWidget {
         // Main screens
         '/home': (context) => HomeScreen(),
         '/notifications': (context) => NotificationApp(),
+        '/view-profile': (context) => ViewProfileScreen(),
+        '/edit-profile': (context) {
+          final userData = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return EditProfileScreen(userData: userData);
+        },
+        '/settings': (context) => SettingsScreen(),
 
         // Partners
         '/partners': (context) => PartnersApp(),
