@@ -42,61 +42,38 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
         errorMessage = null;
       });
 
-      print('🔍 Loading family requests with status: $selectedStatus');
+      final response = await ApiService.get('/family/user/requests', includeAuth: true);
 
-      final params = selectedStatus != 'all' ? '?status=$selectedStatus' : '';
-
-      // Try enhanced endpoint first, then fallback to basic
-      List<String> endpointsToTry = [
-        '/family/user/requests-enhanced$params',
-        '/shaheed/user/requests-enhanced$params',
-        '/family/user/requests$params',
-        '/shaheed/user/requests$params',
-      ];
-
-      Exception? lastError;
-
-      for (String endpoint in endpointsToTry) {
-        try {
-          print('🌐 Trying endpoint: $endpoint');
-          final response = await ApiService.get(endpoint);
-          print('✅ Response from $endpoint: ${response['success']}');
-
-          if (response['success'] == true) {
-            setState(() {
-              var requestsData = response['data'];
-              if (requestsData is Map && requestsData.containsKey('requests')) {
-                myRequests = requestsData['requests'] ?? [];
-              } else if (requestsData is List) {
-                myRequests = requestsData;
-              } else {
-                myRequests = [];
-              }
-              print('📊 Loaded ${myRequests.length} family requests');
-              if (myRequests.isNotEmpty) {
-                print('🏷️ First request status: ${myRequests[0]['status']}');
-              }
-              isLoading = false;
-            });
-            return; // Success - exit the function
+      if (response['success'] == true) {
+        setState(() {
+          var requestsData = response['data'];
+          if (requestsData is Map && requestsData.containsKey('requests')) {
+            myRequests = requestsData['requests'] ?? [];
+          } else if (requestsData is List) {
+            myRequests = requestsData;
+          } else {
+            myRequests = [];
           }
-        } catch (e) {
-          print('❌ Failed endpoint $endpoint: $e');
-          lastError = e is Exception ? e : Exception(e.toString());
-          continue; // Try next endpoint
-        }
+          isLoading = false;
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to load requests');
       }
-
-      // If all endpoints failed, throw the last error
-      throw lastError ?? Exception('All family request endpoints failed');
-
     } catch (e) {
-      print('🚨 Final error: $e');
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
       });
     }
+  }
+
+  List<dynamic> get filteredRequests {
+    if (selectedStatus == 'all') {
+      return myRequests;
+    }
+    return myRequests.where((request) =>
+      (request['status'] ?? '').toString().toLowerCase() == selectedStatus
+    ).toList();
   }
 
   Future<void> _refreshRequests() async {
@@ -229,16 +206,19 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
       );
     }
 
-    if (myRequests.isEmpty) {
+    if (filteredRequests.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.family_restroom, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('No family requests found'),
-            if (selectedStatus != 'all')
-              Text('Try changing the filter above'),
+            Text(
+              selectedStatus == 'all'
+                  ? 'No family requests submitted yet'
+                  : 'No ${statusFilters[selectedStatus]} requests found',
+              textAlign: TextAlign.center,
+            ),
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -256,9 +236,9 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
 
     return ListView.builder(
       padding: EdgeInsets.all(16),
-      itemCount: myRequests.length,
+      itemCount: filteredRequests.length,
       itemBuilder: (context, index) {
-        final request = myRequests[index];
+        final request = filteredRequests[index];
         return _buildRequestCard(request);
       },
     );

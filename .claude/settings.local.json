@@ -12,7 +12,9 @@
       "Bash(git push:*)",
       "Bash(psql:*)",
       "Read(//c/Users/hp/Pictures/helpinghand-backend/**)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(set PGPASSWORD=12345678)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

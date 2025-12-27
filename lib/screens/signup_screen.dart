@@ -1,6 +1,8 @@
 // lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:helpinghand/screens/verify_phone_screen.dart';
+import 'package:helpinghand/screens/email_verification_screen.dart';
+import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -12,6 +14,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isChecked = false;
+  bool _isLoading = false;
 
   // Controllers
   final _nameController = TextEditingController();
@@ -31,14 +34,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _handleSignUp() {
-    // Here you would normally validate inputs and register the user
-    if (_validateInputs()) {
-      // Navigate to verification screen with signup mode
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VerifyPhoneScreen(mode: 'signup'),
+  Future<void> _handleSignUp() async {
+    if (!_validateInputs()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.post('/auth/register', {
+        'full_name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'password': _passwordController.text,
+        'city': _selectedCity,
+      });
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response['success'] == true) {
+        // Navigate to email verification screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EmailVerificationScreen(
+              email: _emailController.text.trim(),
+              userName: _nameController.text.trim(),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Registration failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMessage = e.toString();
+      if (errorMessage.contains('User already exists')) {
+        errorMessage = 'An account with this email or phone already exists';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -237,11 +285,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: _isChecked ? _handleSignUp : null,
-                  child: Text(
-                    'Continue',
-                    style: TextStyle(fontSize: isSmallScreen ? 16 : 18, color: Colors.white),
-                  ),
+                  onPressed: (_isChecked && !_isLoading) ? _handleSignUp : null,
+                  child: _isLoading
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Continue',
+                          style: TextStyle(fontSize: isSmallScreen ? 16 : 18, color: Colors.white),
+                        ),
                 ),
               ),
               SizedBox(height: screenHeight * 0.02),

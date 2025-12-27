@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/auth_service.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/screens/email_verification_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   @override
@@ -49,9 +50,104 @@ class _SignInScreenState extends State<SignInScreen> {
         } else {
           _showSnackBar('Account status: ${user['status']}', isError: true);
         }
+      } else {
+        // Check if error is due to email not verified
+        if (response['email_verified'] == false) {
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Show dialog and navigate to verification screen
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Email Not Verified'),
+              content: Text(response['message'] ?? 'Please verify your email address to continue.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+
+                    // Get user info to show email
+                    try {
+                      final userResponse = await ApiService.post('/auth/resend-verification', {
+                        'email': _phoneController.text.trim(),
+                      });
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EmailVerificationScreen(
+                            email: _phoneController.text.trim(),
+                            userName: 'User',
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      _showSnackBar('Unable to resend verification email', isError: true);
+                    }
+                  },
+                  child: Text('Verify Now'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2A9D8F),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          );
+          return;
+        } else {
+          _showSnackBar(response['message'] ?? 'Login failed', isError: true);
+        }
       }
     } catch (e) {
-      _showSnackBar(e.toString(), isError: true);
+      String errorMessage = e.toString();
+
+      // Check if error message indicates email not verified
+      if (errorMessage.contains('verify your email') ||
+          errorMessage.contains('email verification')) {
+        // Try to extract email from the login attempt
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Email Not Verified'),
+            content: Text('Please verify your email address before logging in.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Navigate to verification screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EmailVerificationScreen(
+                        email: _phoneController.text.trim(),
+                        userName: 'User',
+                      ),
+                    ),
+                  );
+                },
+                child: Text('Verify Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF2A9D8F),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        _showSnackBar(errorMessage, isError: true);
+      }
     } finally {
       setState(() {
         _isLoading = false;

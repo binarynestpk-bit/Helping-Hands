@@ -247,46 +247,30 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   }
 
   Widget _buildRequestCard(dynamic request) {
-    final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
     final status = request['status'] ?? 'pending';
-    final feeAmount = _safeToDouble(request['fee_amount']);
-    final totalDonated = _safeToDouble(request['total_donated']);
-    final fundingProgress = (_safeToDouble(request['funding_progress'])).round();
-    final isFunded = request['is_funded'] ?? false;
-    final remainingAmount = _safeToDouble(request['remaining_amount'] ?? feeAmount);
-
-    // Format date
-    String formattedDate = 'N/A';
-    if (request['created_at'] != null) {
-      try {
-        final date = DateTime.parse(request['created_at']);
-        formattedDate = '${date.day}/${date.month}/${date.year}';
-      } catch (e) {
-        formattedDate = request['created_at'].toString().split('T')[0];
-      }
-    }
 
     return Card(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with status
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _getStatusColor(status).withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with student name and status badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Expanded(
+                  child: Text(
+                    'Student: ${request['student_name'] ?? 'Unknown'}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -297,145 +281,44 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
                     _getStatusText(status),
                     style: TextStyle(
                       color: Colors.white,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      fontSize: isSmallScreen ? 10 : 12,
                     ),
                   ),
-                ),
-                Spacer(),
-                Icon(
-                  _getStatusIcon(status),
-                  color: _getStatusColor(status),
-                  size: 20,
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 12),
 
-          // Content
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Student Info
-                Row(
-                  children: [
-                    Icon(Icons.person, color: Color(0xFF2A9D8F), size: 16),
-                    SizedBox(width: 8),
+            // Request details
+            _buildDetailRow('Institution', request['institution_name'] ?? 'N/A', Icons.school),
+            _buildDetailRow('Degree', request['degree'] ?? 'N/A', Icons.book),
+            _buildDetailRow('Fee Amount', 'PKR ${_safeToDouble(request['fee_amount']).round()}', Icons.monetization_on),
+            _buildDetailRow('Required Date', request['required_date'] ?? 'N/A', Icons.calendar_today),
+            _buildDetailRow('Semester/Year', request['semester_year'] ?? 'N/A', Icons.school_outlined),
+
+            SizedBox(height: 16),
+
+            // Action buttons for pending/approved requests
+            if (status == 'pending' || status == 'approved')
+              Row(
+                children: [
+                  if (status == 'pending') ...[
                     Expanded(
-                      child: Text(
-                        request['student_name'] ?? 'N/A',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 16 : 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showCancelDialog(request),
+                        icon: Icon(Icons.cancel_outlined, size: 18),
+                        label: Text('Cancel'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: BorderSide(color: Colors.red),
                         ),
                       ),
                     ),
                   ],
-                ),
-                SizedBox(height: 8),
-
-                // Institution & Degree
-                Row(
-                  children: [
-                    Icon(Icons.school, color: Colors.grey[600], size: 16),
-                    SizedBox(width: 8),
+                  if (status == 'approved') ...[
                     Expanded(
-                      child: Text(
-                        '${request['degree'] ?? 'N/A'} at ${request['institution_name'] ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 15,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-
-                // Fee Amount and Date
-                Row(
-                  children: [
-                    Icon(Icons.monetization_on, color: Colors.grey[600], size: 16),
-                    SizedBox(width: 8),
-                    Text(
-                      'PKR ${feeAmount.round()} • $formattedDate',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 13 : 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-
-                // Funding Progress (only for approved/funded requests)
-                if (status == 'approved' || status == 'funded') ...[
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Funding Progress',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 13 : 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          Text(
-                            '${fundingProgress}%',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 13 : 14,
-                              fontWeight: FontWeight.bold,
-                              color: isFunded ? Colors.green : Color(0xFF2A9D8F),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      LinearProgressIndicator(
-                        value: fundingProgress / 100,
-                        backgroundColor: Colors.grey[300],
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isFunded ? Colors.green : Color(0xFF2A9D8F),
-                        ),
-                        minHeight: 6,
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Raised: PKR ${totalDonated.round()}',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 11 : 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            'Remaining: PKR ${remainingAmount.round()}',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 11 : 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                ],
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
+                      child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pushNamed(
                             context,
@@ -443,63 +326,83 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
                             arguments: request,
                           );
                         },
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Color(0xFF2A9D8F)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.visibility, color: Color(0xFF2A9D8F), size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              'View Details',
-                              style: TextStyle(
-                                color: Color(0xFF2A9D8F),
-                                fontSize: isSmallScreen ? 12 : 13,
-                              ),
-                            ),
-                          ],
+                        icon: Icon(Icons.visibility, size: 18),
+                        label: Text('View Details'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF2A9D8F),
+                          foregroundColor: Colors.white,
                         ),
                       ),
                     ),
-                    if (status == 'approved') ...[
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _shareRequest(request);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.share, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                'Share',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isSmallScreen ? 12 : 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
-                ),
-              ],
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Color(0xFF2A9D8F)),
+          SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 14),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCancelDialog(dynamic request) {
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Cancel Education Request'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Are you sure you want to cancel this education request?'),
+            SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Reason (Optional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implement cancel functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Cancel feature coming soon')),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -524,60 +427,17 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
-        return 'APPROVED';
+        return 'Approved';
       case 'pending':
-        return 'PENDING';
+        return 'Pending Approval';
       case 'funded':
-        return 'FUNDED';
+        return 'Funded';
       case 'rejected':
-        return 'REJECTED';
+        return 'Rejected';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status.toUpperCase();
     }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Icons.check_circle;
-      case 'pending':
-        return Icons.pending;
-      case 'funded':
-        return Icons.stars;
-      case 'rejected':
-        return Icons.cancel;
-      default:
-        return Icons.info;
-    }
-  }
-
-  void _shareRequest(dynamic request) {
-    // Implement share functionality
-    String shareText = '''
-🎓 Help Support ${request['student_name']}'s Education!
-
-${request['degree']} at ${request['institution_name']}
-Fee Amount: PKR ${_safeToDouble(request['fee_amount']).round()}
-Funding Progress: ${(_safeToDouble(request['funding_progress'])).round()}%
-
-Every contribution makes a difference in someone's education journey!
-
-#EducationSupport #HelpingHand
-''';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Share feature coming soon!'),
-        action: SnackBarAction(
-          label: 'Copy Text',
-          onPressed: () {
-            // Copy to clipboard functionality would go here
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Text copied to clipboard!')),
-            );
-          },
-        ),
-      ),
-    );
   }
 }
