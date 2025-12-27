@@ -574,21 +574,25 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       floatingActionButton: Container(
-        height: isSmallScreen ? 50 : 60,
-        width: isSmallScreen ? 50 : 60,
+        width: 80,
+        height: 80,
         child: FloatingActionButton(
           onPressed: () {
             _showDonateOptions(context);
           },
           backgroundColor: Color(0xFF2A9D8F),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 6,
           child: Text(
             "Donate\nNow",
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: isSmallScreen ? 10 : 12,
-              height: 1.0,
+              fontSize: isSmallScreen ? 11 : 13,
+              height: 1.2,
             ),
           ),
         ),
