@@ -13,6 +13,15 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   bool isLoading = true;
   String selectedFilter = 'all';
 
+  final Map<String, String> statusFilters = {
+    'all': 'All Requests',
+    'pending': 'Pending',
+    'approved': 'Approved',
+    'funded': 'Funded',
+    'rejected': 'Rejected',
+    'cancelled': 'Cancelled',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -92,60 +101,75 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF2A9D8F),
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: RichText(
           text: TextSpan(
             text: 'My Education ',
             style: TextStyle(
-              fontSize: isSmallScreen ? 18 : 20,
-              color: Colors.white,
-              fontWeight: FontWeight.normal,
+              fontSize: 20,
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
             ),
             children: [
               TextSpan(
                 text: 'Requests',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2A9D8F),
                 ),
               ),
             ],
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: Color(0xFF2A9D8F)),
             onPressed: _loadMyRequests,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Filter Tabs
+          // Status Filter - Horizontal Scrolling Chips (like blood module)
           Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.grey[50],
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildFilterTab('All', 'all'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterTab('Pending', 'pending'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterTab('Approved', 'approved'),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildFilterTab('Funded', 'funded'),
-                ),
-              ],
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              itemCount: statusFilters.length,
+              itemBuilder: (context, index) {
+                final status = statusFilters.keys.elementAt(index);
+                final label = statusFilters[status]!;
+                final isSelected = selectedFilter == status;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedFilter = status;
+                    });
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(right: 12, top: 8, bottom: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Color(0xFF2A9D8F) : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -218,39 +242,6 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
         },
         backgroundColor: Color(0xFF2A9D8F),
         child: Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildFilterTab(String title, String value) {
-    final isSelected = selectedFilter == value;
-    final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedFilter = value;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? Color(0xFF2A9D8F) : Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: isSelected ? Color(0xFF2A9D8F) : Colors.grey[300]!,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.grey[700],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: isSmallScreen ? 10 : 12,
-            ),
-          ),
-        ),
       ),
     );
   }
