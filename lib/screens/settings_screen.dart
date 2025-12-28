@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/biometric_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -9,6 +10,25 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _hasBiometric = false;
+  bool _biometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometric();
+  }
+
+  Future<void> _checkBiometric() async {
+    final hasBiometric = await BiometricService.hasBiometricHardware();
+    final isEnabled = await BiometricService.isBiometricEnabled();
+
+    setState(() {
+      _hasBiometric = hasBiometric;
+      _biometricEnabled = isEnabled;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,6 +47,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: 'Update your account password',
             onTap: () => _showChangePasswordDialog(context),
           ),
+
+          // Biometric toggle (only show if device has biometric)
+          if (_hasBiometric)
+            _buildBiometricToggle(),
+
           _buildSettingTile(
             icon: Icons.notifications,
             title: 'Notifications',
@@ -97,6 +122,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _showLogoutDialog(context),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBiometricToggle() {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      elevation: 0,
+      child: SwitchListTile(
+        secondary: Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Color(0xFF2A9D8F).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.fingerprint, color: Color(0xFF2A9D8F)),
+        ),
+        title: Text(
+          'Biometric Login',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          _biometricEnabled
+              ? 'Enabled - Use fingerprint/face to login'
+              : 'Disabled - Login with password only',
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+        value: _biometricEnabled,
+        activeColor: Color(0xFF2A9D8F),
+        onChanged: (bool value) async {
+          if (value) {
+            // Show message that they need to login first
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Please login with your password to enable biometric authentication'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          } else {
+            // Disable biometric
+            final success = await BiometricService.disableBiometricLogin();
+            if (success) {
+              setState(() {
+                _biometricEnabled = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Biometric login disabled'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }

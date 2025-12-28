@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/auth_service.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/biometric_service.dart';
 import 'package:helpinghand/screens/email_verification_screen.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -12,14 +13,86 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _hasBiometric = false;
+  bool _biometricEnabled = false;
+  String _biometricMessage = '';
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricAvailability();
+  }
 
   @override
   void dispose() {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final hasBiometric = await BiometricService.hasBiometricHardware();
+    final isEnabled = await BiometricService.isBiometricEnabled();
+    final message = await BiometricService.getBiometricMessage();
+
+    setState(() {
+      _hasBiometric = hasBiometric;
+      _biometricEnabled = isEnabled;
+      _biometricMessage = message;
+    });
+
+    // Auto-populate email if biometric is enabled
+    if (isEnabled) {
+      final savedEmail = await BiometricService.getSavedEmail();
+      if (savedEmail != null) {
+        _phoneController.text = savedEmail;
+      }
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final credentials = await BiometricService.authenticateWithBiometrics();
+
+      if (credentials == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showSnackBar('Biometric authentication failed or cancelled', isError: true);
+        return;
+      }
+
+      // Login with saved credentials
+      final response = await AuthService.login(
+        identifier: credentials['email']!,
+        password: credentials['password']!,
+      );
+
+      if (response['success'] == true) {
+        final user = response['data']['user'];
+
+        if (user['status'] == 'approved') {
+          _showSnackBar('Login successful!');
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          _showSnackBar('Account status: ${user['status']}', isError: true);
+        }
+      } else {
+        _showSnackBar(response['message'] ?? 'Login failed', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('Biometric login failed: ${e.toString()}', isError: true);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _handleSignIn() async {
@@ -46,7 +119,13 @@ class _SignInScreenState extends State<SignInScreen> {
           _showSnackBar('Your account is pending admin approval', isError: true);
         } else if (user['status'] == 'approved') {
           _showSnackBar('Login successful!');
-          Navigator.pushReplacementNamed(context, '/home');
+
+          // Ask to enable biometric if available and not enabled
+          if (_hasBiometric && !_biometricEnabled) {
+            _askToEnableBiometric();
+          } else {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
         } else {
           _showSnackBar('Account status: ${user['status']}', isError: true);
         }
@@ -163,6 +242,67 @@ class _SignInScreenState extends State<SignInScreen> {
     // Navigator.pushReplacementNamed(context, '/guest-home');
   }
 
+  Future<void> _askToEnableBiometric() async {
+    final biometricMessage = await BiometricService.getBiometricMessage();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.fingerprint, color: Color(0xFF2A9D8F), size: 28),
+            SizedBox(width: 12),
+            Text('Enable Biometric Login?'),
+          ],
+        ),
+        content: Text(
+          'Would you like to enable ${biometricMessage.toLowerCase()} for faster and more secure login next time?',
+          style: TextStyle(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pushReplacementNamed(context, '/home'); // Go to home
+            },
+            child: Text(
+              'Not Now',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+
+              // Enable biometric
+              final success = await BiometricService.enableBiometricLogin(
+                email: _phoneController.text.trim(),
+                password: _passwordController.text,
+              );
+
+              if (success) {
+                _showSnackBar('Biometric login enabled successfully!');
+                setState(() {
+                  _biometricEnabled = true;
+                });
+              } else {
+                _showSnackBar('Failed to enable biometric login', isError: true);
+              }
+
+              Navigator.pushReplacementNamed(context, '/home');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2A9D8F),
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Enable'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -268,6 +408,51 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
             SizedBox(height: screenHeight * 0.02),
+
+            // Biometric login button (if available and enabled)
+            if (_hasBiometric && _biometricEnabled)
+              Center(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 50),
+                    side: BorderSide(color: Color(0xFF2A9D8F), width: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: _isLoading ? null : _handleBiometricLogin,
+                  icon: Icon(Icons.fingerprint, color: Color(0xFF2A9D8F), size: 28),
+                  label: Text(
+                    _biometricMessage,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 16 : 18,
+                      color: Color(0xFF2A9D8F),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+            if (_hasBiometric && _biometricEnabled)
+              SizedBox(height: screenHeight * 0.02),
+
+            if (_hasBiometric && _biometricEnabled)
+              Center(
+                child: Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey)),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('OR', style: TextStyle(color: Colors.grey)),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey)),
+                  ],
+                ),
+              ),
+
+            if (_hasBiometric && _biometricEnabled)
+              SizedBox(height: screenHeight * 0.02),
+
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(

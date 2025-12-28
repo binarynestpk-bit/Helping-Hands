@@ -14,7 +14,8 @@
       "Read(//c/Users/hp/Pictures/helpinghand-backend/**)",
       "Bash(cat:*)",
       "Bash(set PGPASSWORD=12345678)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(flutter pub:*)"
     ],
     "deny": [],
     "ask": []
