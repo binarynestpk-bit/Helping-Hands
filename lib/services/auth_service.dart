@@ -1,6 +1,31 @@
 import 'api_service.dart';
 
 class AuthService {
+  // Simple in-memory user data storage
+  static Map<String, dynamic>? _userData;
+
+  // Save user data
+  static void setUserData(Map<String, dynamic> user) {
+    _userData = user;
+  }
+
+  // Get user data
+  static Map<String, dynamic>? getUserData() {
+    return _userData;
+  }
+
+  // Get user's full name
+  static String getUserName() {
+    if (_userData != null && _userData!['full_name'] != null) {
+      return _userData!['full_name'];
+    }
+    return 'User';
+  }
+
+  // Clear user data
+  static void clearUserData() {
+    _userData = null;
+  }
 
   // Register user
   static Future<Map<String, dynamic>> register({
@@ -22,9 +47,12 @@ class AuthService {
       if (bloodGroup != null && bloodGroup.isNotEmpty) 'blood_group': bloodGroup,
     });
 
-    // Store token if registration successful
+    // Store token and user data if registration successful
     if (response['success'] == true && response['data']['token'] != null) {
       ApiService.setToken(response['data']['token']);
+      if (response['data']['user'] != null) {
+        setUserData(response['data']['user']);
+      }
     }
 
     return response;
@@ -40,9 +68,12 @@ class AuthService {
       'password': password,
     });
 
-    // Store token if login successful
+    // Store token and user data if login successful
     if (response['success'] == true && response['data']['token'] != null) {
       ApiService.setToken(response['data']['token']);
+      if (response['data']['user'] != null) {
+        setUserData(response['data']['user']);
+      }
     }
 
     return response;
@@ -56,6 +87,7 @@ class AuthService {
   // Logout user
   static Future<void> logout() async {
     ApiService.removeToken();
+    clearUserData();
     try {
       await ApiService.post('/auth/logout', {}, includeAuth: true);
     } catch (e) {

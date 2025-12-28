@@ -1,5 +1,7 @@
 // main.dart - UPDATED WITH MY FAMILY REQUESTS ROUTE
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:helpinghand/services/notification_service.dart';
 import 'package:helpinghand/screens/splash_screen.dart';
 import 'package:helpinghand/screens/signin_screen.dart';
 import 'package:helpinghand/screens/signup_screen.dart';
@@ -35,7 +37,21 @@ import 'package:helpinghand/screens/view_profile_screen.dart';
 import 'package:helpinghand/screens/edit_profile_screen.dart';
 import 'package:helpinghand/screens/settings_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp();
+    print('✅ Firebase initialized successfully');
+
+    // Initialize Notification Service
+    await NotificationService.initialize();
+    print('✅ Notification service initialized successfully');
+  } catch (e) {
+    print('❌ Error initializing Firebase/Notifications: $e');
+  }
+
   runApp(MyApp());
 }
 
