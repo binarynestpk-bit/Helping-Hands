@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 
 class MyFamilyRequests extends StatefulWidget {
   const MyFamilyRequests({Key? key}) : super(key: key);
@@ -36,13 +37,17 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
   }
 
   Future<void> _loadMyRequests() async {
+    if (!AuthService.isLoggedIn()) {
+      Navigator.pushReplacementNamed(context, '/signin');
+      return;
+    }
     try {
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
 
-      final response = await ApiService.get('/family/user/requests', includeAuth: true);
+      final response = await ApiService.get('/family/user/requests-enhanced', includeAuth: true);
 
       if (response['success'] == true) {
         setState(() {

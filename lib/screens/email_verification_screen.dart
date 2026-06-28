@@ -100,35 +100,36 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     );
 
     try {
-      // Try to get user profile to check if email is verified
-      final response = await ApiService.post('/auth/login', {
-        'identifier': widget.email,
-        'password': 'temp_check', // This will fail but we just want to check the error
-      });
+      // Use the stored token from registration to fetch the actual profile
+      final response = await ApiService.get('/auth/profile', includeAuth: true);
 
-      Navigator.pop(context); // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
 
-      // This shouldn't succeed, but just in case
-      _showSuccessAndNavigate();
-    } catch (e) {
-      Navigator.pop(context); // Close loading dialog
+      final user = response['data']?['user'];
+      final isVerified = user?['email_verified'] == true;
 
-      String errorMessage = e.toString();
-
-      if (errorMessage.contains('verify your email') ||
-          errorMessage.contains('email verification')) {
-        // Still not verified
+      if (isVerified) {
+        _showSuccessAndNavigate();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Email not verified yet. Please check your inbox and click the verification link.'),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 4),
           ),
         );
-      } else {
-        // Email is verified! (got different error like wrong password)
-        _showSuccessAndNavigate();
       }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not check status. Please try logging in directly.'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 

@@ -182,9 +182,7 @@ class ShuhadaFamilySupportApp extends StatelessWidget {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2A9D8F),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    shape: const StadiumBorder(),
                   ),
                 ),
               ),
@@ -383,7 +381,7 @@ class ShuhadaFamilySupportApp extends StatelessWidget {
               Icons.payment,
                   () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/shaheed-donation-confirm');
+                Navigator.pushNamed(context, '/shaheed-requests');
               },
               isSmallScreen,
             ),
@@ -395,7 +393,7 @@ class ShuhadaFamilySupportApp extends StatelessWidget {
               Icons.repeat,
                   () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/shaheed-donation-confirm');
+                Navigator.pushNamed(context, '/shaheed-requests');
               },
               isSmallScreen,
             ),

@@ -90,10 +90,11 @@ class BiometricService {
 
       // Authenticate
       final authenticated = await _auth.authenticate(
-        localizedReason: 'Please authenticate to access your account',
+        localizedReason: 'Place your finger on the sensor to login',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
+          useErrorDialogs: true,
         ),
       );
 

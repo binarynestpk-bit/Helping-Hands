@@ -1,8 +1,11 @@
-// lib/partners/partners_list_screen.dart (updated for responsiveness)
+// lib/partners/partners_list_screen.dart (live data from API)
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/services/api_service.dart';
 
 class PartnersApp extends StatelessWidget {
+  const PartnersApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,95 +29,77 @@ class PartnersApp extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: PartnersScreen(),
+      body: const PartnersScreen(),
     );
   }
 }
 
-class PartnersScreen extends StatelessWidget {
-  // Mock data for partners
-  final List<Map<String, dynamic>> partners = [
-    {
-      'id': '1',
-      'name': 'ABC Foundation',
-      'image': 'assets/mask_group.png',
-      'description': 'A non-profit organization focused on education and healthcare.',
-    },
-    {
-      'id': '2',
-      'name': 'XYZ Hospital',
-      'image': 'assets/mask_group.png',
-      'description': 'Leading hospital providing quality healthcare services.',
-    },
-    {
-      'id': '3',
-      'name': 'Education Trust',
-      'image': 'assets/mask_group.png',
-      'description': 'Supporting educational initiatives for underprivileged children.',
-    },
-    {
-      'id': '4',
-      'name': 'Health Alliance',
-      'image': 'assets/mask_group.png',
-      'description': 'Alliance of healthcare providers working together for better healthcare.',
-    },
-    {
-      'id': '5',
-      'name': 'Community Services',
-      'image': 'assets/mask_group.png',
-      'description': 'Providing essential services to local communities.',
-    },
-    {
-      'id': '6',
-      'name': 'Hope Foundation',
-      'image': 'assets/mask_group.png',
-      'description': 'Bringing hope to families in need through various support programs.',
-    },
-    {
-      'id': '7',
-      'name': 'First Responders',
-      'image': 'assets/mask_group.png',
-      'description': 'Emergency response team providing critical care during disasters.',
-    },
-    {
-      'id': '8',
-      'name': 'Relief Organization',
-      'image': 'assets/mask_group.png',
-      'description': 'Focused on disaster relief and humanitarian aid.',
-    },
-    {
-      'id': '9',
-      'name': 'Children\'s Aid',
-      'image': 'assets/mask_group.png',
-      'description': 'Supporting children\'s welfare and development programs.',
-    },
-  ];
+class PartnersScreen extends StatefulWidget {
+  const PartnersScreen({super.key});
+
+  @override
+  State<PartnersScreen> createState() => _PartnersScreenState();
+}
+
+class _PartnersScreenState extends State<PartnersScreen> {
+  List<Map<String, dynamic>> _partners = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPartners();
+  }
+
+  Future<void> _fetchPartners() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+      // Public endpoint — returns active partners managed by the admin.
+      final response = await ApiService.get('/partners');
+      final List list = (response['data'] as List?) ?? [];
+      final mapped = list.map<Map<String, dynamic>>((p) {
+        final m = Map<String, dynamic>.from(p as Map);
+        // Keep an 'image' alias for the detail screen.
+        m['image'] = m['logo_url'];
+        return m;
+      }).toList();
+      if (!mounted) return;
+      setState(() {
+        _partners = mapped;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load partners. Pull down to retry.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  ImageProvider? _logoImage(String? url) {
+    if (url != null && url.startsWith('http')) return NetworkImage(url);
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
-    // Determine grid cross axis count based on screen width
-    int crossAxisCount = 3; // Default for large screens
-
-    if (screenWidth < 480) {
-      crossAxisCount = 2; // Medium screens
-    }
-
-    if (screenWidth < 360) {
-      crossAxisCount = 1; // Small screens
-    }
+    int crossAxisCount = 3;
+    if (screenWidth < 480) crossAxisCount = 2;
+    if (screenWidth < 360) crossAxisCount = 1;
 
     return Padding(
-      padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.04,
-          vertical: 10
-      ),
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Info text
           Text(
             'Our trusted partners who collaborate with us to make a difference in the lives of those in need.',
             style: TextStyle(
@@ -123,93 +108,110 @@ class PartnersScreen extends StatelessWidget {
             ),
           ),
           SizedBox(height: 20),
-
-          // Grid of partners
           Expanded(
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: BouncingScrollPhysics(),
-              itemCount: partners.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 20,
-                childAspectRatio: isSmallScreen ? 0.9 : 0.75, // Adjust ratio for better fit
-              ),
-              itemBuilder: (context, index) {
-                final partner = partners[index];
-                return Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: isSmallScreen ? 40 : 45,
-                        backgroundColor: Colors.white,
-                        backgroundImage: AssetImage(partner['image']),
-                        onBackgroundImageError: (exception, stackTrace) {},
-                        child: ClipOval(
-                          child: Icon(
-                            Icons.business,
-                            size: isSmallScreen ? 40 : 45,
-                            color: Color(0xFF2A9D8F).withOpacity(0.7),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Expanded(
-                      child: Text(
-                        partner['name'],
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF2A9D8F),
-                        minimumSize: Size(isSmallScreen ? 80 : 90, isSmallScreen ? 30 : 35),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () {
-                        // Navigate to partner details
-                        Navigator.pushNamed(
-                          context,
-                          '/partners-detail',
-                          arguments: partner,
-                        );
-                      },
-                      child: Text(
-                        'View Details',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallScreen ? 10 : 12
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
+            child: RefreshIndicator(
+              onRefresh: _fetchPartners,
+              color: const Color(0xFF2A9D8F),
+              child: _buildBody(crossAxisCount, isSmallScreen),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBody(int crossAxisCount, bool isSmallScreen) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF2A9D8F)));
+    }
+    if (_error != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 80),
+          Icon(Icons.error_outline, size: 48, color: Colors.grey),
+          SizedBox(height: 12),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700])),
+        ],
+      );
+    }
+    if (_partners.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 80),
+          Icon(Icons.handshake_outlined, size: 56, color: Colors.grey),
+          SizedBox(height: 12),
+          Text('No partners to show yet.',
+              textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700])),
+        ],
+      );
+    }
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      itemCount: _partners.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 15,
+        mainAxisSpacing: 20,
+        childAspectRatio: isSmallScreen ? 0.9 : 0.75,
+      ),
+      itemBuilder: (context, index) {
+        final partner = _partners[index];
+        final logo = _logoImage(partner['logo_url']?.toString());
+        return Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Colors.black26, blurRadius: 8, spreadRadius: 1),
+                ],
+              ),
+              child: CircleAvatar(
+                radius: isSmallScreen ? 40 : 45,
+                backgroundColor: Colors.white,
+                backgroundImage: logo,
+                onBackgroundImageError: logo != null ? (e, s) {} : null,
+                child: logo == null
+                    ? Icon(Icons.business,
+                        size: isSmallScreen ? 40 : 45,
+                        color: const Color(0xFF2A9D8F).withOpacity(0.7))
+                    : null,
+              ),
+            ),
+            SizedBox(height: 10),
+            Expanded(
+              child: Text(
+                partner['name']?.toString() ?? '',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(height: 5),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2A9D8F),
+                minimumSize: Size(isSmallScreen ? 80 : 90, isSmallScreen ? 30 : 35),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/partners-detail', arguments: partner);
+              },
+              child: Text(
+                'View Details',
+                style: TextStyle(color: Colors.white, fontSize: isSmallScreen ? 10 : 12),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

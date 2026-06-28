@@ -2,9 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/screens/verify_phone_screen.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/widgets/phone_input_field.dart';
 
-class ForgetPasswordScreen extends StatelessWidget {
+class ForgetPasswordScreen extends StatefulWidget {
+  @override
+  _ForgetPasswordScreenState createState() => _ForgetPasswordScreenState();
+}
+
+class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   final TextEditingController phoneController = TextEditingController();
+
+  // Full E.164 mobile (dial code + number) kept in sync by PhoneInputField.
+  String _fullMobile = '+92';
 
   @override
   Widget build(BuildContext context) {
@@ -16,11 +25,8 @@ class ForgetPasswordScreen extends StatelessWidget {
     // Calculate responsive sizes
     final titleFontSize = isSmallScreen ? 20.0 : 24.0;
     final subtitleFontSize = isSmallScreen ? 14.0 : 16.0;
-    final labelFontSize = isSmallScreen ? 14.0 : 16.0;
-    final hintFontSize = isSmallScreen ? 12.0 : 14.0;
     final buttonHeight = isSmallScreen ? 45.0 : 50.0;
     final buttonTextSize = isSmallScreen ? 16.0 : 18.0;
-    final iconSize = isSmallScreen ? 18.0 : 20.0;
     final verticalSpacing = screenHeight * 0.03;
 
     return Scaffold(
@@ -69,45 +75,10 @@ class ForgetPasswordScreen extends StatelessWidget {
             SizedBox(height: verticalSpacing),
 
             // Phone Number field
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Mobile Number',
-                style: TextStyle(
-                    fontSize: labelFontSize,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black
-                ),
-              ),
-            ),
-            SizedBox(height: 5),
-            TextField(
+            PhoneInputField(
               controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                prefixIcon: Padding(
-                  padding: EdgeInsets.all(12.0),
-                  child: Image.asset(
-                      'assets/call.png',
-                      width: iconSize,
-                      height: iconSize
-                  ),
-                ),
-                prefixText: '+92 ',
-                prefixStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: isSmallScreen ? 14 : 16
-                ),
-                hintText: 'Enter Your Phone Number',
-                hintStyle: TextStyle(
-                  color: Color(0xFF9C9C9C),
-                  fontSize: hintFontSize,
-                ),
-                border: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFECECEC)),
-                ),
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
-              ),
+              isSmallScreen: isSmallScreen,
+              onChanged: (value) => _fullMobile = value,
             ),
 
             SizedBox(height: verticalSpacing),
@@ -128,7 +99,9 @@ class ForgetPasswordScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => VerifyPhoneScreen(mode: 'reset_password'),
+                      builder: (context) => VerifyPhoneScreen(
+                          mode: 'reset_password',
+                          phone: _fullMobile),
                     ),
                   );
                 },

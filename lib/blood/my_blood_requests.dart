@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 
 class MyBloodRequests extends StatefulWidget {
   const MyBloodRequests({Key? key}) : super(key: key);
@@ -19,8 +20,7 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
     'all': 'All Requests',
     'pending': 'Pending',
     'approved': 'Approved',
-    'fulfilled_through_app': 'Fulfilled via App',
-    'fulfilled_outside_app': 'Fulfilled Outside',
+    'fulfilled': 'Fulfilled',
     'cancelled': 'Cancelled',
   };
 
@@ -31,6 +31,11 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
   }
 
   Future<void> _loadMyRequests() async {
+    if (!AuthService.isLoggedIn()) {
+      Navigator.pushReplacementNamed(context, '/signin');
+      return;
+    }
+
     try {
       setState(() {
         isLoading = true;
@@ -38,7 +43,7 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
       });
 
       final params = selectedStatus != 'all' ? '?status=$selectedStatus' : '';
-      final response = await ApiService.get('/blood/user/requests-enhanced$params');
+      final response = await ApiService.get('/blood/user/requests-enhanced$params', includeAuth: true);
 
       if (response['success'] == true) {
         setState(() {

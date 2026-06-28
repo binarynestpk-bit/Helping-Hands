@@ -19,8 +19,10 @@ export default function Login() {
 
     try {
       const response = await authAPI.login(formData);
-      const { token } = response.data.data;
+      const { token, user } = response.data.data;
       localStorage.setItem('admin_token', token);
+      localStorage.setItem('admin_role', user.role);
+      localStorage.setItem('admin_user', JSON.stringify(user));
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');

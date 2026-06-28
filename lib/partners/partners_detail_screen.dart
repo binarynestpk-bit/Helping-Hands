@@ -1,6 +1,7 @@
 // lib/partners/partners_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/services/api_service.dart';
 
 class PartnerDetailsScreen extends StatelessWidget {
   @override
@@ -80,19 +81,24 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
                   ),
                 ],
               ),
-              child: CircleAvatar(
-                radius: isSmallScreen ? 50 : 60,
-                backgroundColor: Colors.white,
-                backgroundImage: AssetImage(partnerData['image']),
-                onBackgroundImageError: (exception, stackTrace) {},
-                child: ClipOval(
-                  child: Icon(
-                    Icons.business,
-                    size: isSmallScreen ? 50 : 60,
-                    color: Color(0xFF2A9D8F).withOpacity(0.7),
-                  ),
-                ),
-              ),
+              child: Builder(builder: (_) {
+                final logoStr = partnerData['image']?.toString() ?? partnerData['logo_url']?.toString();
+                final ImageProvider? logo =
+                    (logoStr != null && logoStr.startsWith('http')) ? NetworkImage(logoStr) : null;
+                return CircleAvatar(
+                  radius: isSmallScreen ? 50 : 60,
+                  backgroundColor: Colors.white,
+                  backgroundImage: logo,
+                  onBackgroundImageError: logo != null ? (e, s) {} : null,
+                  child: logo == null
+                      ? Icon(
+                          Icons.business,
+                          size: isSmallScreen ? 50 : 60,
+                          color: Color(0xFF2A9D8F).withOpacity(0.7),
+                        )
+                      : null,
+                );
+              }),
             ),
             SizedBox(height: screenHeight * 0.02),
 
@@ -123,45 +129,7 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
 
             SizedBox(height: screenHeight * 0.03),
 
-            // Partner Projects Section
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Color(0xFFEAF5F4),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Recent Projects',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  _buildProjectItem(
-                    'Medical Camp (February 2025)',
-                    'Providing free medical checkups and medicines to underserved communities.',
-                    isSmallScreen,
-                  ),
-                  _buildProjectItem(
-                    'Educational Scholarships (January 2025)',
-                    'Awarded 50 scholarships to deserving students for higher education.',
-                    isSmallScreen,
-                  ),
-                  _buildProjectItem(
-                    'Disaster Relief (December 2024)',
-                    'Provided emergency supplies to families affected by recent floods.',
-                    isSmallScreen,
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: screenHeight * 0.01),
 
             // Contact Information
             Container(
@@ -182,10 +150,19 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
                     ),
                   ),
                   SizedBox(height: 10),
-                  _buildContactRow(Icons.phone, '+92 300-1234567', isSmallScreen),
-                  _buildContactRow(Icons.email, 'info@${partnerData['name'].toString().toLowerCase().replaceAll(' ', '')}.org', isSmallScreen),
-                  _buildContactRow(Icons.language, 'www.${partnerData['name'].toString().toLowerCase().replaceAll(' ', '')}.org', isSmallScreen),
-                  _buildContactRow(Icons.location_on, 'Main Street, City Center, Pakistan', isSmallScreen),
+                  if ((partnerData['phone'] ?? '').toString().isNotEmpty)
+                    _buildContactRow(Icons.phone, partnerData['phone'].toString(), isSmallScreen),
+                  if ((partnerData['email'] ?? '').toString().isNotEmpty)
+                    _buildContactRow(Icons.email, partnerData['email'].toString(), isSmallScreen),
+                  if ((partnerData['website'] ?? '').toString().isNotEmpty)
+                    _buildContactRow(Icons.language, partnerData['website'].toString(), isSmallScreen),
+                  if ((partnerData['category'] ?? '').toString().isNotEmpty)
+                    _buildContactRow(Icons.category, partnerData['category'].toString(), isSmallScreen),
+                  if (((partnerData['phone'] ?? '').toString().isEmpty) &&
+                      ((partnerData['email'] ?? '').toString().isEmpty) &&
+                      ((partnerData['website'] ?? '').toString().isEmpty))
+                    Text('No contact information provided.',
+                        style: TextStyle(color: Colors.grey, fontSize: isSmallScreen ? 12 : 14)),
                 ],
               ),
             ),
@@ -195,7 +172,7 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
             // Partner with Us Button
             ElevatedButton(
               onPressed: () {
-                _showPartnershipDialog(context, isSmallScreen);
+                _showPartnershipDialog(context, isSmallScreen, partnerData['name']?.toString() ?? '');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF2A9D8F),
@@ -232,33 +209,6 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildProjectItem(String title, String description, bool isSmallScreen) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: isSmallScreen ? 14 : 15,
-            ),
-          ),
-          SizedBox(height: 3),
-          Text(
-            description,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 12 : 14,
-              color: Colors.grey[700],
-            ),
-          ),
-          Divider(),
-        ],
       ),
     );
   }
@@ -368,90 +318,156 @@ It was popularised in the 1960s with the release of Letraset sheets containing L
     );
   }
 
-  void _showPartnershipDialog(BuildContext context, bool isSmallScreen) {
+  void _showPartnershipDialog(BuildContext context, bool isSmallScreen, String orgName) {
+    final orgController = TextEditingController(text: orgName);
+    final personController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+    final messageController = TextEditingController();
+    bool submitting = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Partner With Us',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.bold,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(
+            'Partner With Us',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 18 : 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Thank you for your interest in partnering with us! Please provide your details and we will get in touch with you shortly.',
+                  style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: orgController,
+                  decoration: InputDecoration(
+                    labelText: 'Organization Name',
+                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: personController,
+                  decoration: InputDecoration(
+                    labelText: 'Contact Person',
+                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: messageController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Message (optional)',
+                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (orgController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text('Please enter your organization name'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      setDialogState(() => submitting = true);
+                      try {
+                        final response = await ApiService.post(
+                          '/partner-applications',
+                          {
+                            'organization_name': orgController.text.trim(),
+                            'contact_person': personController.text.trim(),
+                            'email': emailController.text.trim(),
+                            'phone': phoneController.text.trim(),
+                            'message': messageController.text.trim(),
+                          },
+                          includeAuth: true,
+                        );
+                        Navigator.pop(dialogContext);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(response['message']?.toString() ??
+                                'Partnership request submitted successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } catch (e) {
+                        setDialogState(() => submitting = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Could not submit your request. Please try again.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2A9D8F),
+              ),
+              child: submitting
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      'Submit',
+                      style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                    ),
+            ),
+          ],
         ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Thank you for your interest in partnering with us! Please provide your contact information and we will get in touch with you shortly.',
-                style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
-              ),
-              SizedBox(height: 20),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Organization Name',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
-                ),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Contact Person',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
-                ),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
-                ),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                  labelStyle: TextStyle(fontSize: isSmallScreen ? 13 : 14),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(
-              'Cancel',
-              style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Partnership request submitted successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF2A9D8F),
-            ),
-            child: Text(
-              'Submit',
-              style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-            ),
-          ),
-        ],
       ),
     );
   }

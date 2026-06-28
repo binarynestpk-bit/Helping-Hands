@@ -293,7 +293,7 @@ class _ShaheedFamilyDetailState extends State<ShaheedFamilyDetail> {
                           children: [
                             Expanded(
                               child: Text(
-                                'Family of: ${request['martyr_name'] ?? 'Unknown'}',
+                                'Family of: ${request['father_name'] ?? request['martyr_name'] ?? 'Unknown'}',
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 16 : 18,
                                   fontWeight: FontWeight.bold,
@@ -314,7 +314,7 @@ class _ShaheedFamilyDetailState extends State<ShaheedFamilyDetail> {
                           ],
                         ),
                         SizedBox(height: 10),
-                        InfoRow(label: 'Family Head', value: request['family_head_name'] ?? 'N/A', isSmallScreen: isSmallScreen),
+                        InfoRow(label: 'Family Head', value: request['family_name'] ?? request['family_head_name'] ?? 'N/A', isSmallScreen: isSmallScreen),
                         InfoRow(label: "No of Children's", value: '${request['children_count'] ?? 0}', isSmallScreen: isSmallScreen),
                         InfoRow(label: 'City', value: request['city'] ?? 'N/A', isSmallScreen: isSmallScreen),
                         InfoRow(label: 'Requested Amount', value: 'PKR ${requestedAmount.round()}', isSmallScreen: isSmallScreen),
@@ -387,10 +387,10 @@ class _ShaheedFamilyDetailState extends State<ShaheedFamilyDetail> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  InfoRow(label: 'Martyr Name', value: request['martyr_name'] ?? 'N/A', isSmallScreen: isSmallScreen),
-                  InfoRow(label: 'Date of Martyrdom', value: _formatDate(request['martyrdom_date']), isSmallScreen: isSmallScreen),
-                  InfoRow(label: 'Place of Martyrdom', value: request['martyrdom_place'] ?? 'N/A', isSmallScreen: isSmallScreen),
-                  InfoRow(label: 'Contact Number', value: request['contact_number'] ?? 'N/A', isSmallScreen: isSmallScreen),
+                  InfoRow(label: 'Martyr Name', value: request['father_name'] ?? request['martyr_name'] ?? 'N/A', isSmallScreen: isSmallScreen),
+                  InfoRow(label: 'Date of Martyrdom', value: _formatDate(request['shahadat_date'] ?? request['martyrdom_date']), isSmallScreen: isSmallScreen),
+                  InfoRow(label: 'Place of Martyrdom', value: request['shahadat_place'] ?? request['martyrdom_place'] ?? 'N/A', isSmallScreen: isSmallScreen),
+                  InfoRow(label: 'Contact Number', value: request['mobile_number'] ?? request['contact_number'] ?? 'N/A', isSmallScreen: isSmallScreen),
                 ],
               ),
             ),
@@ -418,7 +418,7 @@ class _ShaheedFamilyDetailState extends State<ShaheedFamilyDetail> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    request['current_situation'] ?? 'No description available.',
+                    request['shahadat_description'] ?? request['current_situation'] ?? 'No description available.',
                     style: TextStyle(
                       fontSize: isSmallScreen ? 13 : 14,
                       height: 1.5,
@@ -633,7 +633,8 @@ class RelatedRequestCard extends StatelessWidget {
       elevation: 2,
       child: Padding(
         padding: EdgeInsets.all(12.0),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,60 +653,55 @@ class RelatedRequestCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Family of: Ahmad Khan',
-                        style: TextStyle(
-                            fontSize: isSmallScreen ? 14 : 16,
-                            fontWeight: FontWeight.bold
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Family of: Ahmad Khan',
+                              style: TextStyle(
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'High',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       SizedBox(height: 5),
-                      buildInfoRow("assets/heart.png", 'Martial Status: ', 'Yes'),
-                      buildInfoRow("assets/user.png", 'No of Children\'s: ', '4'),
-                      buildInfoRow("assets/calendar.png", 'Date of Shahadat: ', '15/01/2025'),
-                      buildInfoRow("assets/money.png", 'Monthly Need: ', '45,000'),
-                      SizedBox(height: 30), // Add space for the button
+                      buildInfoRow(Icons.favorite_border, 'Martial Status: ', 'Yes'),
+                      buildInfoRow(Icons.child_care, 'No of Children\'s: ', '4'),
+                      buildInfoRow(Icons.calendar_today, 'Date of Shahadat: ', '15/01/2025'),
+                      buildInfoRow(Icons.monetization_on, 'Monthly Need: ', '45,000'),
                     ],
                   ),
                 ),
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.orange,
-                          ),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                            'High',
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontSize: isSmallScreen ? 12 : 14,
-                            )
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
               ],
             ),
-            Positioned(
-              bottom: 0,
-              right: 0,
+            SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: onViewDetails,
-                child: Text(
-                  'View Details',
-                  style: TextStyle(
-                      fontSize: isSmallScreen ? 10 : 12,
-                      color: Colors.white
-                  ),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF2A9D8F),
                   shape: RoundedRectangleBorder(
@@ -713,7 +709,14 @@ class RelatedRequestCard extends StatelessWidget {
                   ),
                   padding: EdgeInsets.symmetric(
                       horizontal: isSmallScreen ? 12 : 16,
-                      vertical: isSmallScreen ? 4 : 4
+                      vertical: 6
+                  ),
+                ),
+                child: Text(
+                  'View Details',
+                  style: TextStyle(
+                      fontSize: isSmallScreen ? 11 : 12,
+                      color: Colors.white
                   ),
                 ),
               ),
@@ -724,27 +727,23 @@ class RelatedRequestCard extends StatelessWidget {
     );
   }
 
-  Widget buildInfoRow(String iconPath, String label, String value) {
+  Widget buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3.0),
       child: Row(
         children: [
-          Image.asset(
-              iconPath,
-              width: isSmallScreen ? 16 : 16,
-              height: isSmallScreen ? 16 : 16
-          ),
+          Icon(icon, size: 16, color: Color(0xFF2A9D8F)),
           SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
           ),
           Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isSmallScreen ? 12 : 14,
-              )
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isSmallScreen ? 12 : 14,
+            ),
           ),
         ],
       ),

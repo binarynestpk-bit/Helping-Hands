@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,8 +50,6 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
     }
   }
 
-  // Fix the _makePhoneCall function in your blood_requests_list.dart
-
   Future<void> _makePhoneCall(String phoneNumber) async {
     if (phoneNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,28 +66,20 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
       cleanNumber = '+92$cleanNumber';
     }
 
-    print('=== PHONE CALL DEBUG ===');
-    print('Original number: $phoneNumber');
-    print('Cleaned number: $cleanNumber');
-    print('======================');
-
     // Create the phone URI
     final Uri phoneUri = Uri(scheme: 'tel', path: cleanNumber);
 
     try {
       // Check if the device can handle phone calls
       if (await canLaunchUrl(phoneUri)) {
-        print('✅ Can launch phone URI: $phoneUri');
         await launchUrl(
           phoneUri,
           mode: LaunchMode.externalApplication, // Force external app
         );
       } else {
-        print('❌ Cannot launch phone URI: $phoneUri');
         throw 'Phone app not available on this device';
       }
     } catch (e) {
-      print('Phone call error: $e');
 
       // Show user-friendly error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +113,6 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
         lat = double.parse(request['latitude'].toString());
         lng = double.parse(request['longitude'].toString());
       } catch (e) {
-        print('Error parsing coordinates: $e');
       }
     }
 
@@ -167,10 +156,11 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
     }
   }
 
-// 1. Fix the donation API call in blood_requests_list.dart
-// Update your _showDonationDialog method:
-
   void _showDonationDialog(dynamic request) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final notesController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -179,54 +169,74 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Commit to Donate'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Are you sure you want to commit to donating blood for:'),
-                  SizedBox(height: 10),
-                  Text('Patient: ${request['patient_name'] ?? 'Unknown'}',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Blood Group: ${request['blood_group'] ?? 'N/A'}'),
-                  Text('Hospital: ${request['hospital_name'] ?? 'N/A'}'),
-                  SizedBox(height: 15),
-                  Text('By committing, you agree to contact the requester and arrange the donation.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                ],
+              title: Text('Commit to Donate Blood'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Patient: ${request['patient_name'] ?? 'Unknown'}',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Blood Group: ${request['blood_group'] ?? 'N/A'}'),
+                    Text('Hospital: ${request['hospital_name'] ?? 'N/A'}'),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Your Name *',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Your Phone (with country code) *',
+                        border: OutlineInputBorder(),
+                        hintText: '+923001234567',
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: notesController,
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    SizedBox(height: 8),
+                    Text('By committing, you agree to contact the requester to arrange the donation.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
                   child: Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting ? null : () async {
-                    setState(() {
-                      isSubmitting = true;
-                    });
+                    if (nameController.text.trim().isEmpty || phoneController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please enter your name and phone number')),
+                      );
+                      return;
+                    }
+
+                    setState(() => isSubmitting = true);
 
                     try {
-                      // Check if user is authenticated
-                      String? token = ApiService.getToken();
-                      if (token == null) {
-                        throw Exception('Please login again to donate blood');
-                      }
-
-                      // Prepare donation data (matching backend expectations)
-                      Map<String, dynamic> donationData = {
-                        'donor_name': 'John Doe', // Get from user profile
-                        'donor_phone': '+923001234567', // Get from user profile
-                        'notes': 'Available immediately for donation',
-                      };
-
-                      // CRITICAL: Make sure to include authentication
                       final response = await ApiService.post(
                         '/blood/donate/${request['id']}',
-                        donationData,
-                        includeAuth: true, // IMPORTANT: This was missing!
+                        {
+                          'donor_name': nameController.text.trim(),
+                          'donor_phone': phoneController.text.trim(),
+                          'notes': notesController.text.trim(),
+                        },
+                        includeAuth: true,
                       );
 
                       Navigator.of(context).pop();
@@ -234,29 +244,23 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                       if (response['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Thank you for your commitment to donate!'),
+                            content: Text('Thank you! Your commitment has been recorded.'),
                             backgroundColor: Colors.green,
                           ),
                         );
-
-                        // Refresh the requests list
                         _loadBloodRequests();
                       } else {
                         throw Exception(response['message'] ?? 'Failed to commit donation');
                       }
                     } catch (e) {
                       Navigator.of(context).pop();
-
-                      String errorMessage = e.toString();
-                      if (errorMessage.contains('token required') ||
-                          errorMessage.contains('authentication') ||
-                          errorMessage.contains('401')) {
-                        errorMessage = 'Authentication failed. Please logout and login again.';
+                      String errorMsg = e.toString();
+                      if (errorMsg.contains('401') || errorMsg.contains('token')) {
+                        errorMsg = 'Session expired. Please login again.';
                       }
-
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Error: $errorMessage'),
+                          content: Text('Error: $errorMsg'),
                           backgroundColor: Colors.red,
                           duration: Duration(seconds: 5),
                         ),
@@ -269,13 +273,13 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                   ),
                   child: isSubmitting
                       ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
                       : Text('Commit to Donate'),
                 ),
               ],
@@ -283,7 +287,11 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      nameController.dispose();
+      phoneController.dispose();
+      notesController.dispose();
+    });
   }
 
   List<dynamic> get filteredRequests {
@@ -423,16 +431,6 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
   Widget _buildRequestCard(dynamic request) {
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
 
-    // DEBUG: Print the request data to console
-    print('=== DEBUG BLOOD REQUEST ===');
-    print('Patient: ${request['patient_name']}');
-    print('Hospital: ${request['hospital_name']}');
-    print('Latitude: ${request['latitude']}');
-    print('Longitude: ${request['longitude']}');
-    print('Map Address: ${request['map_address']}');
-    print('Full Request Keys: ${request.keys.toList()}');
-    print('========================');
-
     // Determine urgency color
     Color urgencyColor = Color(0xFF2A9D8F); // Default
     if (request['urgency_level'] == 'Urgent') {
@@ -452,13 +450,10 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
         lat = double.parse(request['latitude'].toString());
         lng = double.parse(request['longitude'].toString());
         hasLocationData = (lat != 0 && lng != 0); // Make sure they're not zero
-        print('✅ Parsed coordinates: $lat, $lng');
       } catch (e) {
-        print('❌ Error parsing coordinates: $e');
         hasLocationData = false;
       }
     } else {
-      print('❌ No latitude/longitude fields found');
     }
 
     // Get mobile number for calling
@@ -543,40 +538,10 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                 isSmallScreen
             ),
 
-            // DEBUG: Show coordinate status
-            Container(
-              padding: EdgeInsets.all(8),
-              margin: EdgeInsets.symmetric(vertical: 5),
-              decoration: BoxDecoration(
-                color: hasLocationData ? Colors.green.shade100 : Colors.red.shade100,
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    hasLocationData ? Icons.location_on : Icons.location_off,
-                    size: 16,
-                    color: hasLocationData ? Colors.green.shade800 : Colors.red.shade800,
-                  ),
-                  SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      hasLocationData
-                          ? 'GPS: ${lat?.toStringAsFixed(4)}, ${lng?.toStringAsFixed(4)}'
-                          : 'No GPS coordinates available',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: hasLocationData ? Colors.green.shade800 : Colors.red.shade800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 15),
+                        SizedBox(height: 15),
 
             // Action buttons
+            // Action buttons — two rows of two so labels fit on one line.
             Row(
               children: [
                 // Call button
@@ -585,7 +550,10 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                     child: OutlinedButton.icon(
                       onPressed: () => _makePhoneCall(mobileNumber),
                       icon: Icon(Icons.phone, size: 16),
-                      label: Text('Call', style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
+                      label: Text('Call',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.green,
                         side: BorderSide(color: Colors.green),
@@ -615,6 +583,8 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                     ),
                     label: Text(
                         hasLocationData ? 'Navigate' : 'No GPS',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: isSmallScreen ? 12 : 14)
                     ),
                     style: OutlinedButton.styleFrom(
@@ -624,8 +594,11 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
-
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
                 // Details button
                 Expanded(
                   child: OutlinedButton.icon(
@@ -637,7 +610,10 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                       );
                     },
                     icon: Icon(Icons.info_outline, size: 16),
-                    label: Text('Details', style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
+                    label: Text('Details',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.grey[700],
                       side: BorderSide(color: Colors.grey[400]!),
@@ -652,7 +628,10 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
                   child: ElevatedButton.icon(
                     onPressed: () => _showDonationDialog(request),
                     icon: Icon(Icons.volunteer_activism, size: 16),
-                    label: Text('Donate', style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
+                    label: Text('Donate',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFE01219),
                       foregroundColor: Colors.white,

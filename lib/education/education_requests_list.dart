@@ -527,8 +527,6 @@ class _DonationDialogState extends State<DonationDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
 
-  // FIXED: Use exact database enum values
-  String selectedPaymentMethod = 'JazzCash';
   bool isProcessing = false;
 
   @override
@@ -538,92 +536,65 @@ class _DonationDialogState extends State<DonationDialog> {
   }
 
   Future<void> _processDonation() async {
-    // CHECK AUTHENTICATION FIRST
     if (!AuthService.isLoggedIn()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please login to make a donation'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please login to make a donation'), backgroundColor: Colors.red),
       );
       Navigator.of(context).pop();
       Navigator.pushReplacementNamed(context, '/signin');
       return;
     }
 
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    final amount = double.parse(_amountController.text);
+    final userData = AuthService.getUserData();
+    final donorEmail = userData?['email']?.toString() ?? '';
+    final donorPhone = (userData?['phone'] ?? userData?['mobile'] ?? '').toString();
+    final donorName = userData?['full_name']?.toString() ?? '';
+
+    // Step 1: Process real payment through Zindigi
+    final paymentResult = await Navigator.pushNamed(
+      context,
+      '/zindigi-payment',
+      arguments: {
+        'amount': amount,
+        'donor_mobile': donorPhone,
+        'donor_email': donorEmail,
+        'donor_name': donorName,
+        'donation_type': 'education',
+        'request_id': widget.request['id'].toString(),
+      },
+    ) as Map<String, dynamic>?;
+
+    if (!mounted) return;
+
+    if (paymentResult == null || paymentResult['success'] != true) {
+      if (paymentResult?['cancelled'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment failed. Please try again.'), backgroundColor: Colors.red),
+        );
+      }
       return;
     }
 
-    setState(() {
-      isProcessing = true;
-    });
-
-    try {
-      // FIXED: Use exact database enum values
-      final donationData = {
-        'amount': double.parse(_amountController.text),
-        'payment_method': selectedPaymentMethod, // Now matches DB exactly
-      };
-
-      final response = await ApiService.post(
-        '/education/donate/${widget.request['id']}',
-        donationData,
-        includeAuth: true,
-      );
-
-      if (response['success']) {
-        Navigator.of(context).pop();
-        widget.onDonationComplete();
-
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Donation Successful!'),
-                ],
-              ),
-              content: Text(response['message'] ?? 'Thank you for your donation!'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-      } else {
-        throw Exception(response['message'] ?? 'Donation failed');
-      }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Access token required') ||
-          errorMessage.contains('401') ||
-          errorMessage.contains('authentication')) {
-        errorMessage = 'Authentication failed. Please login again.';
-        Navigator.of(context).pop();
-        Navigator.pushReplacementNamed(context, '/signin');
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $errorMessage'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        isProcessing = false;
-      });
-    }
+    // Payment confirmed server-side. The backend records the donation and
+    // updates the request's funding status once Zindigi confirms the payment.
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    widget.onDonationComplete();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(children: [
+          Icon(Icons.check_circle, color: Colors.green),
+          SizedBox(width: 8),
+          Text('Donation Successful!'),
+        ]),
+        content: const Text('Thank you for your donation!'),
+        actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
+      ),
+    );
   }
 
   @override
@@ -643,7 +614,13 @@ class _DonationDialogState extends State<DonationDialog> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          // Clear the phone's system navigation bar so the buttons are tappable.
+          bottom: 20 + MediaQuery.of(context).padding.bottom,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -744,39 +721,6 @@ class _DonationDialogState extends State<DonationDialog> {
               ),
               SizedBox(height: 16),
 
-              Text(
-                'Payment Method',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 12),
-
-              // FIXED: Use exact database enum values
-              DropdownButtonFormField<String>(
-                value: selectedPaymentMethod,
-                decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.payment, color: Color(0xFF2A9D8F)),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFF2A9D8F)),
-                  ),
-                ),
-                items: [
-                  DropdownMenuItem(value: 'JazzCash', child: Text('JazzCash')),
-                  DropdownMenuItem(value: 'Easypaisa', child: Text('Easypaisa')),
-                  DropdownMenuItem(value: 'Bank Transfer', child: Text('Bank Transfer')),
-                  DropdownMenuItem(value: 'Credit/Debit Card', child: Text('Credit/Debit Card')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedPaymentMethod = value!;
-                  });
-                },
-              ),
               SizedBox(height: 24),
 
               Row(

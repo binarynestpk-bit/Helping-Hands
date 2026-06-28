@@ -1,20 +1,20 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 
 class AuthService {
-  // Simple in-memory user data storage
   static Map<String, dynamic>? _userData;
+  static const _userKey = 'user_data';
 
-  // Save user data
   static void setUserData(Map<String, dynamic> user) {
     _userData = user;
+    SharedPreferences.getInstance().then((p) => p.setString(_userKey, json.encode(user)));
   }
 
-  // Get user data
   static Map<String, dynamic>? getUserData() {
     return _userData;
   }
 
-  // Get user's full name
   static String getUserName() {
     if (_userData != null && _userData!['full_name'] != null) {
       return _userData!['full_name'];
@@ -22,9 +22,17 @@ class AuthService {
     return 'User';
   }
 
-  // Clear user data
   static void clearUserData() {
     _userData = null;
+    SharedPreferences.getInstance().then((p) => p.remove(_userKey));
+  }
+
+  static Future<void> loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userKey);
+    if (raw != null) {
+      _userData = json.decode(raw) as Map<String, dynamic>;
+    }
   }
 
   // Register user

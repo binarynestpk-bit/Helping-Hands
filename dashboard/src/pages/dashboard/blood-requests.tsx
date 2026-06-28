@@ -13,10 +13,15 @@ import {
   Calendar,
   Droplet,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { formatDate, getStatusColor, formatDateTime } from '@/utils/helpers';
+import { exportToCsv, csvDateStamp } from '@/utils/exportCsv';
+import { useToast } from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function BloodRequests() {
+  const { showToast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,6 +30,7 @@ export default function BloodRequests() {
   const [bloodGroupFilter, setBloodGroupFilter] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [confirmState, setConfirmState] = useState<{ mode: 'approve' | 'reject' | 'delete'; id: string } | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -47,21 +53,47 @@ export default function BloodRequests() {
   const handleApprove = async (requestId: string) => {
     try {
       await bloodRequestsAPI.approve(requestId);
+      showToast('Request approved', 'success');
       fetchRequests();
     } catch (error) {
       console.error('Failed to approve request:', error);
+      showToast('Failed to approve — please try again', 'error');
     }
   };
 
-  const handleReject = async (requestId: string) => {
-    const reason = prompt('Enter rejection reason:');
-    if (reason) {
-      try {
-        await bloodRequestsAPI.reject(requestId, reason);
-        fetchRequests();
-      } catch (error) {
-        console.error('Failed to reject request:', error);
-      }
+  const handleReject = async (requestId: string, reason: string) => {
+    try {
+      await bloodRequestsAPI.reject(requestId, reason);
+      showToast('Request rejected', 'success');
+      fetchRequests();
+    } catch (error) {
+      console.error('Failed to reject request:', error);
+      showToast('Failed to reject — please try again', 'error');
+    }
+  };
+
+  const handleDelete = async (requestId: string) => {
+    try {
+      await bloodRequestsAPI.delete(requestId);
+      showToast('Record deleted', 'success');
+      fetchRequests();
+    } catch (error) {
+      console.error('Failed to delete request:', error);
+      showToast('Failed to delete — please try again', 'error');
+    }
+  };
+
+  const handleConfirm = async (reason?: string) => {
+    if (!confirmState) return;
+    const { mode, id } = confirmState;
+    setConfirmState(null);
+    setShowModal(false);
+    if (mode === 'approve') {
+      await handleApprove(id);
+    } else if (mode === 'delete') {
+      await handleDelete(id);
+    } else {
+      await handleReject(id, reason || '');
     }
   };
 
@@ -76,6 +108,20 @@ export default function BloodRequests() {
 
     return matchesSearch && matchesUrgency && matchesBloodGroup;
   });
+
+  const handleExport = () => {
+    exportToCsv(`blood-requests-${csvDateStamp()}.csv`, filteredRequests, [
+      { key: 'patient_name', label: 'Patient Name' },
+      { key: 'blood_group', label: 'Blood Group' },
+      { key: 'hospital_name', label: 'Hospital Name' },
+      { key: 'location', label: 'Location' },
+      { key: 'mobile_number', label: 'Mobile Number' },
+      { key: 'urgency_level', label: 'Urgency Level' },
+      { key: 'blood_units', label: 'Blood Units' },
+      { key: 'status', label: 'Status' },
+      { key: 'required_date', label: 'Required Date' },
+    ]);
+  };
 
   const getUrgencyColor = (urgency: string) => {
     const colors: Record<string, string> = {
@@ -96,7 +142,7 @@ export default function BloodRequests() {
               Manage and approve blood donation requests
             </p>
           </div>
-          <button className="btn-primary">
+          <button onClick={handleExport} className="btn-primary">
             <Download className="w-4 h-4 mr-2" />
             Export Data
           </button>
@@ -306,19 +352,25 @@ export default function BloodRequests() {
                           {request.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleApprove(request.id)}
+                                onClick={() => setConfirmState({ mode: 'approve', id: request.id })}
                                 className="text-green-600 hover:text-green-900"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleReject(request.id)}
+                                onClick={() => setConfirmState({ mode: 'reject', id: request.id })}
                                 className="text-red-600 hover:text-red-900"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
                             </>
                           )}
+                          <button
+                            onClick={() => setConfirmState({ mode: 'delete', id: request.id })}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -409,34 +461,44 @@ export default function BloodRequests() {
                 )}
               </div>
 
-              {selectedRequest.status === 'pending' && (
-                <div className="flex gap-3 mt-6 pt-6 border-t border-neutral-200">
-                  <button
-                    onClick={() => {
-                      handleApprove(selectedRequest.id);
-                      setShowModal(false);
-                    }}
-                    className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  >
-                    <CheckCircle className="w-4 h-4 inline mr-2" />
-                    Approve Request
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleReject(selectedRequest.id);
-                      setShowModal(false);
-                    }}
-                    className="flex-1 btn-danger"
-                  >
-                    <XCircle className="w-4 h-4 inline mr-2" />
-                    Reject Request
-                  </button>
-                </div>
-              )}
+              <div className="flex gap-3 mt-6 pt-6 border-t border-neutral-200">
+                {selectedRequest.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => setConfirmState({ mode: 'approve', id: selectedRequest.id })}
+                      className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4 inline mr-2" />
+                      Approve Request
+                    </button>
+                    <button
+                      onClick={() => setConfirmState({ mode: 'reject', id: selectedRequest.id })}
+                      className="flex-1 btn-danger"
+                    >
+                      <XCircle className="w-4 h-4 inline mr-2" />
+                      Reject Request
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setConfirmState({ mode: 'delete', id: selectedRequest.id })}
+                  className="flex-1 inline-flex items-center justify-center bg-red-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmState}
+        mode={confirmState?.mode || 'approve'}
+        onCancel={() => setConfirmState(null)}
+        onConfirm={handleConfirm}
+      />
     </Layout>
   );
 }

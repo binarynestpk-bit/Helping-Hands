@@ -42,17 +42,14 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              _scaffoldKey.currentState?.openEndDrawer();
-            },
-          ),
-        ],
+      leading: IconButton(
+          icon: Icon(Icons.menu, color: Colors.white),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
       ),
-      // Add the navigation drawer
-      endDrawer: _buildNavigationDrawer(context, isSmallScreen),
+      drawer: _buildNavigationDrawer(context, isSmallScreen),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +110,67 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Donation Progress Card
+            // Get Involved Today Section (NOW FIRST)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+              child: Text(
+                "Get Involved Today",
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                crossAxisCount: screenWidth < 360 ? 1 : 2,
+                childAspectRatio: screenWidth < 360 ? 2.5 : 1.1,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  // Blood Donation Card
+                  _buildDonationOptionWithImage(
+                    "Blood Bank",
+                    "assets/blood-donation.png",
+                        () => Navigator.pushNamed(context, '/blood-donation'),
+                    isSmallScreen: isSmallScreen,
+                  ),
+
+                  // Education Donation Card
+                  _buildDonationOptionWithImage(
+                    "Education Care",
+                    "assets/graduation-capp.png",
+                        () => Navigator.pushNamed(context, '/education-donation'),
+                    isSmallScreen: isSmallScreen,
+                  ),
+
+                  // Shuhada Family Support Card
+                  _buildDonationOptionWithImage(
+                    "Martyrs Family Support",
+                    "assets/hand.png",
+                        () => Navigator.pushNamed(context, '/shaheed-family'),
+                    isSmallScreen: isSmallScreen,
+                  ),
+
+                  // Our Partners Card
+                  _buildDonationOptionWithImage(
+                    "Our Partners",
+                    "assets/handshake.png",
+                        () => Navigator.pushNamed(context, '/partners'),
+                    isSmallScreen: isSmallScreen,
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 24),
+
+            // Donation Progress Card (NOW SECOND)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
               child: Container(
@@ -258,67 +315,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ),
-            ),
-
-            SizedBox(height: 24),
-
-            // MOVED UP: Get Involved Today Section
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-              child: Text(
-                "Get Involved Today",
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 18 : 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // Original donation options grid (reverted to simple styling)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-              child: GridView.count(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                crossAxisCount: screenWidth < 360 ? 1 : 2,
-                childAspectRatio: screenWidth < 360 ? 2.5 : 1.1,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  // Blood Donation Card
-                  _buildDonationOptionWithImage(
-                    "Blood Bank",
-                    "assets/blood-donation.png",
-                        () => Navigator.pushNamed(context, '/blood-donation'),
-                    isSmallScreen: isSmallScreen,
-                  ),
-
-                  // Education Donation Card
-                  _buildDonationOptionWithImage(
-                    "Education Care",
-                    "assets/graduation-capp.png",
-                        () => Navigator.pushNamed(context, '/education-donation'),
-                    isSmallScreen: isSmallScreen,
-                  ),
-
-                  // Shuhada Family Support Card
-                  _buildDonationOptionWithImage(
-                    "Martyrs Family Support",
-                    "assets/hand.png",
-                        () => Navigator.pushNamed(context, '/shaheed-family'),
-                    isSmallScreen: isSmallScreen,
-                  ),
-
-                  // Our Partners Card
-                  _buildDonationOptionWithImage(
-                    "Our Partners",
-                    "assets/handshake.png",
-                        () => Navigator.pushNamed(context, '/partners'),
-                    isSmallScreen: isSmallScreen,
-                  ),
-                ],
               ),
             ),
 

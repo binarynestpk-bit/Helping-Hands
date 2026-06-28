@@ -1,7 +1,13 @@
-// lib/shaheed/shaheed_family_form_screen.dart - COMPLETE CORRECTED VERSION
+﻿// lib/shaheed/shaheed_family_form_screen.dart - COMPLETE CORRECTED VERSION
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helpinghand/widgets/phone_input_field.dart';
 
 class RequestShuhadaSupportScreen extends StatefulWidget {
   @override
@@ -26,8 +32,13 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
   final _monthlyNeedController = TextEditingController();       // Maps to monthly_need
   final _videoLinkController = TextEditingController();         // Maps to video_link
 
+  // Full E.164 mobile (dial code + number) kept in sync by PhoneInputField.
+  String _fullMobile = '+92';
+
   String? maritalStatus;
   DateTime _selectedShahadatDate = DateTime.now().subtract(Duration(days: 365));
+  File? _selectedPhoto;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -60,6 +71,13 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
     }
   }
 
+  Future<void> _pickPhoto() async {
+    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 40, maxWidth: 1024, maxHeight: 1024);
+    if (picked != null) {
+      setState(() { _selectedPhoto = File(picked.path); });
+    }
+  }
+
   Future<void> _submitRequest() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -75,7 +93,7 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
         'family_name': _familyNameController.text.trim(),
         'father_name': _fatherNameController.text.trim(),
         'address': _addressController.text.trim(),
-        'mobile_number': '+92${_mobileController.text.trim()}',
+        'mobile_number': _fullMobile,
         'marital_status': maritalStatus, // Will be 'Yes' or 'No'
         'children_count': maritalStatus == "Yes" && _childrenCountController.text.isNotEmpty
             ? int.parse(_childrenCountController.text) : 0,
@@ -93,9 +111,31 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
             ? _videoLinkController.text.trim() : null,
       };
 
-      print('📦 Sending corrected request data: $requestData');
+      print('ðŸ“¦ Sending corrected request data: $requestData');
 
-      final response = await ApiService.createFamilyRequest(requestData);
+      Map<String, dynamic> response;
+
+      if (_selectedPhoto != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token') ?? '';
+        final uri = Uri.parse('${ApiService.baseUrl}/family/requests');
+        final req = http.MultipartRequest('POST', uri)
+          ..headers['Authorization'] = 'Bearer $token'
+          ..files.add(await http.MultipartFile.fromPath('photo_attachment', _selectedPhoto!.path));
+        requestData.forEach((k, v) { if (v != null) req.fields[k] = v.toString(); });
+        final streamed = await req.send();
+        final body = await streamed.stream.bytesToString();
+        try {
+          response = jsonDecode(body) as Map<String, dynamic>;
+        } catch (_) {
+          if (streamed.statusCode == 413) {
+            throw Exception('Photo is too large. Please select a smaller image.');
+          }
+          throw Exception('Server error (${streamed.statusCode}). Please try again without a photo.');
+        }
+      } else {
+        response = await ApiService.createFamilyRequest(requestData);
+      }
 
       if (response['success'] == true) {
         _showSuccessDialog();
@@ -214,8 +254,14 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
                   isSmallScreen, _fatherNameController, required: true),
               buildTextField("Address", "Enter Complete Address", "assets/institution.png",
                   isSmallScreen, _addressController, required: true),
-              buildTextField("Mobile Number", "Enter Your Phone Number", "assets/call.png",
-                  isSmallScreen, _mobileController, prefixText: '+92 ', required: true),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15),
+                child: PhoneInputField(
+                  controller: _mobileController,
+                  isSmallScreen: isSmallScreen,
+                  onChanged: (value) => _fullMobile = value,
+                ),
+              ),
               buildDropdownField("Marital Status", ["Yes", "No"], (value) {
                 setState(() {
                   maritalStatus = value;
@@ -487,38 +533,38 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-            label,
-            style: TextStyle(
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.bold
-            )
-        ),
+        Text(label, style: TextStyle(fontSize: isSmallScreen ? 14 : 16, fontWeight: FontWeight.bold)),
         SizedBox(height: 5),
-        Container(
-          width: double.infinity,
-          height: isSmallScreen ? 80 : 100,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade400),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                  "assets/upload-icon.png",
-                  width: isSmallScreen ? 40 : 50,
-                  height: isSmallScreen ? 40 : 50
-              ),
-              SizedBox(height: 5),
-              Text(
-                  hintText,
-                  style: TextStyle(
-                    color: Color(0xFF9C9C9C),
-                    fontSize: isSmallScreen ? 12 : 14,
+        GestureDetector(
+          onTap: _pickPhoto,
+          child: Container(
+            width: double.infinity,
+            height: isSmallScreen ? 80 : 100,
+            decoration: BoxDecoration(
+              border: Border.all(color: _selectedPhoto != null ? Color(0xFF2A9D8F) : Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
+              color: _selectedPhoto != null ? Color(0xFF2A9D8F).withOpacity(0.05) : null,
+            ),
+            child: _selectedPhoto != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: Color(0xFF2A9D8F), size: 28),
+                      SizedBox(width: 8),
+                      Flexible(child: Text(_selectedPhoto!.path.split('/').last, style: TextStyle(color: Color(0xFF2A9D8F), fontSize: 13), overflow: TextOverflow.ellipsis)),
+                      SizedBox(width: 8),
+                      GestureDetector(onTap: () => setState(() => _selectedPhoto = null), child: Icon(Icons.close, color: Colors.red, size: 20)),
+                    ],
                   )
-              ),
-            ],
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.upload_file, color: Colors.grey, size: isSmallScreen ? 32 : 40),
+                      SizedBox(height: 5),
+                      Text(hintText, style: TextStyle(color: Color(0xFF9C9C9C), fontSize: isSmallScreen ? 12 : 14)),
+                      Text('Tap to select', style: TextStyle(color: Color(0xFF2A9D8F), fontSize: 11)),
+                    ],
+                  ),
           ),
         ),
         SizedBox(height: 20),
@@ -547,3 +593,4 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
     );
   }
 }
+

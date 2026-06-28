@@ -58,7 +58,7 @@ class _ShuhadaSupportRequestsState extends State<ShuhadaSupportRequests> {
     }
 
     return _familyRequests.where((request) {
-      final familyName = (request['family_head_name'] ?? '').toLowerCase();
+      final familyName = (request['family_name'] ?? request['family_head_name'] ?? '').toLowerCase();
       final martyrName = (request['martyr_name'] ?? '').toLowerCase();
       final city = (request['city'] ?? '').toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -336,7 +336,7 @@ class _ShuhadaSupportRequestsState extends State<ShuhadaSupportRequests> {
             ),
             SizedBox(height: 10),
             _buildDetailRow(Icons.favorite_border,
-                'Family Head: ${request['family_head_name'] ?? 'N/A'}', isSmallScreen),
+                'Family Head: ${request['family_name'] ?? request['family_head_name'] ?? 'N/A'}', isSmallScreen),
             _buildDetailRow(Icons.group,
                 'No of Children: ${request['children_count'] ?? 0}', isSmallScreen),
             _buildDetailRow(Icons.calendar_today,

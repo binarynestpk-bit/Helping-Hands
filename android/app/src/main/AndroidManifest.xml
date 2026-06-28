@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.helpinghand">
+    package="com.trustinghand.app">
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -15,7 +15,7 @@
         android:required="false" />
 
     <application
-        android:label="helpinghand"
+        android:label="Trusting Hand"
         android:icon="@mipmap/ic_launcher">
 
         <!-- Google Maps API Key (replace with your actual key) -->

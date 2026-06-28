@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart'; // ONLY ADDED FOR AUTHENTICATION
+import 'package:helpinghand/widgets/phone_input_field.dart';
 
 class RequestEducationSupport extends StatefulWidget {
   @override
@@ -23,6 +24,9 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
   final _feeAmountController = TextEditingController();
   final _reasonController = TextEditingController();
   final _dateController = TextEditingController();
+
+  // Full E.164 mobile (dial code + number) kept in sync by PhoneInputField.
+  String _fullMobile = '+92';
 
   // Files for uploads
   File? _resultAttachment;
@@ -49,7 +53,13 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
   // Function to handle picking files
   Future<void> _pickFile(bool isResultFile) async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      // Compress so the upload stays well under the server's request-size limit.
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 40,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
 
       if (pickedFile != null) {
         setState(() {
@@ -127,24 +137,28 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
         apiDate = "2025-12-31"; // Default fallback
       }
 
-      Map<String, dynamic> requestData = {
-        'student_name': _nameController.text,
-        'father_name': _fatherNameController.text,
-        'institution_name': _institutionController.text,
-        'degree': _degreeController.text,
-        'cgpa_result': _cgpaController.text,
-        'semester_year': _semesterController.text,
-        'fee_amount': double.parse(_feeAmountController.text),
+      final fields = <String, String>{
+        'student_name': _nameController.text.trim(),
+        'father_name': _fatherNameController.text.trim(),
+        'institution_name': _institutionController.text.trim(),
+        'degree': _degreeController.text.trim(),
+        'cgpa_result': _cgpaController.text.trim(),
+        'semester_year': _semesterController.text.trim(),
+        'fee_amount': _feeAmountController.text.trim(),
         'required_date': apiDate,
-        'reason': _reasonController.text,
-        'mobile_number': _phoneController.text.replaceAll('+92 ', ''),
+        'reason': _reasonController.text.trim(),
+        'mobile_number': _fullMobile,
       };
 
-      // ONLY CHANGE: Added includeAuth: true
-      final response = await ApiService.post(
+      // Send as multipart so the picked attachments are actually uploaded.
+      final response = await ApiService.postMultipart(
         '/education/requests',
-        requestData,
-        includeAuth: true, // ADDED AUTHENTICATION
+        fields,
+        files: {
+          if (_resultAttachment != null) 'result_attachment': _resultAttachment!,
+          if (_feeAttachment != null) 'fee_challan': _feeAttachment!,
+        },
+        includeAuth: true,
       );
 
       if (response['success']) {
@@ -244,7 +258,14 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
             buildTextField("Degree", null, "e.g., Bachelor of Science in IT", _degreeController, isSmallScreen),
             buildTextField("CGPA / Result", null, "e.g., 3.8 / A+", _cgpaController, isSmallScreen),
             buildTextField("Semester / Year", null, "e.g., 5th Semester / 3rd Year", _semesterController, isSmallScreen),
-            buildTextField("Mobile Number", "assets/call.png", "Enter Your Phone Number", _phoneController, isSmallScreen, prefixText: "+92 "),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: PhoneInputField(
+                controller: _phoneController,
+                isSmallScreen: isSmallScreen,
+                onChanged: (value) => _fullMobile = value,
+              ),
+            ),
             buildTextField("Fee Amount", null, "Enter required fee amount", _feeAmountController, isSmallScreen),
             buildDescriptionField("Reason for Donation", "Explain why you need support", _reasonController, isSmallScreen),
             buildTextField("Required Date", "assets/calendar.png", "Enter required date (e.g., March 5, 2025)", _dateController, isSmallScreen),

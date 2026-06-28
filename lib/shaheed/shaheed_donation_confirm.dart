@@ -1,38 +1,19 @@
 // lib/shaheed/shaheed_donation_confirm.dart - UPDATED WITH BACKEND
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
-import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 
-class ConfirmDonationApp extends StatelessWidget {
+class ShaheedConfirmDonationPage extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: ConfirmDonationPage(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+  _ShaheedConfirmDonationPageState createState() => _ShaheedConfirmDonationPageState();
 }
 
-class ConfirmDonationPage extends StatefulWidget {
-  @override
-  _ConfirmDonationPageState createState() => _ConfirmDonationPageState();
-}
-
-class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
-  String? _selectedPaymentMethod = 'JazzCash'; // Updated to match backend enum
+class _ShaheedConfirmDonationPageState extends State<ShaheedConfirmDonationPage> {
   String _selectedDonationType = 'one_time';
   final TextEditingController _donationAmountController = TextEditingController(text: '15000');
 
   bool _isLoading = false;
   Map<String, dynamic>? _familyRequest;
-
-  // Payment method options (matching backend exactly)
-  final List<Map<String, String>> _paymentMethods = [
-    {'value': 'Credit/Debit Card', 'label': 'Credit/Debit Card'},
-    {'value': 'JazzCash', 'label': 'JazzCash'},
-    {'value': 'Easypaisa', 'label': 'Easypaisa'},
-    {'value': 'Bank Transfer', 'label': 'Bank Transfer'},
-  ];
 
   final List<Map<String, String>> _donationTypes = [
     {'value': 'one_time', 'label': 'One-time Donation'},
@@ -90,44 +71,50 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
       return;
     }
 
-    final amount = _donationAmountController.text.trim();
-    if (amount.isEmpty || double.tryParse(amount) == null || double.parse(amount) <= 0) {
+    final amountStr = _donationAmountController.text.trim();
+    if (amountStr.isEmpty || double.tryParse(amountStr) == null || double.parse(amountStr) <= 0) {
       _showErrorDialog('Please enter a valid donation amount');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      final donationData = {
-        'amount': double.parse(amount),
-        'payment_method': _selectedPaymentMethod!,
-        'donation_type': _selectedDonationType,
-      };
+      final amount = double.parse(amountStr);
+      final userData = AuthService.getUserData();
+      final donorEmail = userData?['email']?.toString() ?? '';
+      final donorPhone = (userData?['phone'] ?? userData?['mobile'] ?? '').toString();
+      final donorName = userData?['full_name']?.toString() ?? '';
 
-      final response = await ApiService.donateToFamily(
-        _familyRequest!['id'],
-        donationData,
-      );
+      final paymentResult = await Navigator.pushNamed(
+        context,
+        '/zindigi-payment',
+        arguments: {
+          'amount': amount,
+          'donor_mobile': donorPhone,
+          'donor_email': donorEmail,
+          'donor_name': donorName,
+          'donation_type': 'family',
+          'donation_option': _selectedDonationType,
+          'request_id': _familyRequest!['id'].toString(),
+        },
+      ) as Map<String, dynamic>?;
 
-      if (response['success'] == true) {
-        _showSuccessDialog(amount);
-      } else {
-        _showErrorDialog(response['message'] ?? 'Failed to process donation');
+      if (!mounted) return;
+
+      if (paymentResult == null || paymentResult['success'] != true) {
+        if (paymentResult?['cancelled'] != true) {
+          _showErrorDialog('Payment failed. Please try again.');
+        }
+        return;
       }
+
+      _showSuccessDialog(amountStr);
     } catch (e) {
-      _showErrorDialog('Error: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) _showErrorDialog('An error occurred. Please try again.');
     }
   }
 
   void _showSuccessDialog(String amount) {
-    final familyName = _familyRequest!['family_head_name'] ?? 'the family';
+    final familyName = _familyRequest!['family_name'] ?? _familyRequest!['family_head_name'] ?? 'the family';
 
     showDialog(
       context: context,
@@ -246,7 +233,8 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
               elevation: 2,
               child: Padding(
                 padding: EdgeInsets.all(12.0),
-                child: Stack(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,71 +253,66 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Family of: ${_familyRequest!['martyr_name'] ?? 'Unknown'}',
-                                style: TextStyle(
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                    fontWeight: FontWeight.bold
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Family of: ${_familyRequest!['father_name'] ?? _familyRequest!['martyr_name'] ?? 'Unknown'}',
+                                      style: TextStyle(
+                                          fontSize: isSmallScreen ? 14 : 16,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: remainingAmount > 0 ? Colors.red : Colors.green,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        remainingAmount > 0 ? 'Active' : 'Funded',
+                                        style: TextStyle(
+                                          color: remainingAmount > 0 ? Colors.red : Colors.green,
+                                          fontSize: isSmallScreen ? 12 : 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                               SizedBox(height: 5),
-                              buildInfoRow("assets/heart.png",
-                                  'Family Head: ${_familyRequest!['family_head_name'] ?? 'N/A'}', isSmallScreen),
-                              buildInfoRow("assets/user.png",
+                              buildInfoRow(Icons.person,
+                                  'Family Head: ${_familyRequest!['family_name'] ?? _familyRequest!['family_head_name'] ?? 'N/A'}', isSmallScreen),
+                              buildInfoRow(Icons.child_care,
                                   'No of Children: ${_familyRequest!['children_count'] ?? 0}', isSmallScreen),
-                              buildInfoRow("assets/calendar.png",
+                              buildInfoRow(Icons.info_outline,
                                   'Status: ${_familyRequest!['status'] ?? 'Active'}', isSmallScreen),
-                              buildInfoRow("assets/money.png",
+                              buildInfoRow(Icons.monetization_on,
                                   'Goal: PKR ${requestedAmount.round()}', isSmallScreen),
                               if (totalDonated > 0)
-                                buildInfoRow("assets/money.png",
+                                buildInfoRow(Icons.monetization_on,
                                     'Raised: PKR ${totalDonated.round()}', isSmallScreen),
-                              buildInfoRow("assets/money.png",
+                              buildInfoRow(Icons.monetization_on,
                                   'Remaining: PKR ${remainingAmount.round()}', isSmallScreen),
-                              SizedBox(height: 30),
                             ],
                           ),
                         ),
-                        Column(
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: remainingAmount > 0 ? Colors.red : Colors.green,
-                                  ),
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                    remainingAmount > 0 ? 'Active' : 'Funded',
-                                    style: TextStyle(
-                                      color: remainingAmount > 0 ? Colors.red : Colors.green,
-                                      fontSize: isSmallScreen ? 12 : 14,
-                                    )
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
                       ],
                     ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
+                    SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.pushNamed(context, '/shaheed-detail', arguments: _familyRequest);
                         },
-                        child: Text(
-                          'View Details',
-                          style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 12,
-                              color: Colors.white
-                          ),
-                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF2A9D8F),
                           shape: RoundedRectangleBorder(
@@ -337,7 +320,14 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
                           ),
                           padding: EdgeInsets.symmetric(
                               horizontal: isSmallScreen ? 12 : 16,
-                              vertical: isSmallScreen ? 4 : 4
+                              vertical: 6
+                          ),
+                        ),
+                        child: Text(
+                          'View Details',
+                          style: TextStyle(
+                              fontSize: isSmallScreen ? 11 : 12,
+                              color: Colors.white
                           ),
                         ),
                       ),
@@ -348,42 +338,6 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
             ),
             SizedBox(height: 20),
 
-            // Select Payment Method Section
-            Text(
-              'Select Payment Method',
-              style: TextStyle(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold
-              ),
-            ),
-            SizedBox(height: 10),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  children: _paymentMethods.map((method) {
-                    return RadioListTile<String>(
-                      title: Text(
-                        method['label']!,
-                        style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                      ),
-                      value: method['value']!,
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value;
-                        });
-                      },
-                      activeColor: Color(0xFF2A9D8F),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
             SizedBox(height: 20),
 
             // Donation Type Section
@@ -520,22 +474,19 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
                 ),
               ),
             ),
+            SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget buildInfoRow(String iconPath, String text, bool isSmallScreen) {
+  Widget buildInfoRow(IconData icon, String text, bool isSmallScreen) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 3),
       child: Row(
         children: [
-          Image.asset(
-              iconPath,
-              width: isSmallScreen ? 16 : 16,
-              height: isSmallScreen ? 16 : 16
-          ),
+          Icon(icon, size: 16, color: Color(0xFF2A9D8F)),
           SizedBox(width: 5),
           Expanded(
             child: Text(

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://helpinghand-backend.vercel.app/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -20,8 +20,14 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // 401 = no/expired session, 403 = invalid token (e.g. stale token from an
+    // older backend). Both mean the session is bad — force a fresh login instead
+    // of silently showing empty data.
+    const status = error.response?.status;
+    if ((status === 401 || status === 403) && !error.config?.url?.includes('/login')) {
       localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_role');
+      localStorage.removeItem('admin_user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -33,6 +39,12 @@ export const authAPI = {
     apiClient.post('/admin/login', credentials),
   logout: () => apiClient.post('/admin/logout'),
   getProfile: () => apiClient.get('/admin/profile'),
+  updateProfile: (data: any) => apiClient.put('/admin/profile', data),
+  changePassword: (data: any) => apiClient.put('/admin/change-password', data),
+};
+
+export const notificationsAPI = {
+  getAll: () => apiClient.get('/admin/notifications'),
 };
 
 export const usersAPI = {
@@ -43,6 +55,7 @@ export const usersAPI = {
     apiClient.put(`/admin/users/${id}/reject`, { reason }),
   suspend: (id: string, reason: string) =>
     apiClient.put(`/admin/users/${id}/suspend`, { reason }),
+  delete: (id: string) => apiClient.delete(`/admin/users/${id}`),
 };
 
 export const bloodRequestsAPI = {
@@ -51,6 +64,7 @@ export const bloodRequestsAPI = {
   approve: (id: string) => apiClient.put(`/admin/blood-requests/${id}/approve`),
   reject: (id: string, reason: string) =>
     apiClient.put(`/admin/blood-requests/${id}/reject`, { reason }),
+  delete: (id: string) => apiClient.delete(`/admin/blood-requests/${id}`),
 };
 
 export const educationRequestsAPI = {
@@ -59,6 +73,7 @@ export const educationRequestsAPI = {
   approve: (id: string) => apiClient.put(`/admin/education-requests/${id}/approve`),
   reject: (id: string, reason: string) =>
     apiClient.put(`/admin/education-requests/${id}/reject`, { reason }),
+  delete: (id: string) => apiClient.delete(`/admin/education-requests/${id}`),
 };
 
 export const familyRequestsAPI = {
@@ -67,6 +82,21 @@ export const familyRequestsAPI = {
   approve: (id: string) => apiClient.put(`/admin/family-requests/${id}/approve`),
   reject: (id: string, reason: string) =>
     apiClient.put(`/admin/family-requests/${id}/reject`, { reason }),
+  delete: (id: string) => apiClient.delete(`/admin/family-requests/${id}`),
+};
+
+export const partnersAPI = {
+  getAll: () => apiClient.get('/admin/partners'),
+  create: (formData: FormData) => apiClient.post('/admin/partners', formData),
+  update: (id: string, formData: FormData) => apiClient.put(`/admin/partners/${id}`, formData),
+  delete: (id: string) => apiClient.delete(`/admin/partners/${id}`),
+};
+
+export const partnerApplicationsAPI = {
+  getAll: () => apiClient.get('/admin/partner-applications'),
+  updateStatus: (id: string, status: string) =>
+    apiClient.put(`/admin/partner-applications/${id}/status`, { status }),
+  delete: (id: string) => apiClient.delete(`/admin/partner-applications/${id}`),
 };
 
 export const dashboardAPI = {

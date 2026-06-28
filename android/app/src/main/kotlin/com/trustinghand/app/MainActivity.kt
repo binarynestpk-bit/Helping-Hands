@@ -1,4 +1,4 @@
-package com.example.helpinghand
+package com.trustinghand.app
 
 import io.flutter.embedding.android.FlutterActivity
 

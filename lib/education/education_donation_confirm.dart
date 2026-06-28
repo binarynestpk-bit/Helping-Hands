@@ -18,7 +18,6 @@ class ConfirmDonationPage extends StatefulWidget {
 }
 
 class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
-  String? _selectedPaymentMethod = 'Easypaisa'; // Default selected payment method
   final TextEditingController _donationAmountController = TextEditingController(text: '15,000'); // Default donation amount
 
   @override
@@ -159,71 +158,6 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Select Payment Method Section
-            Text(
-              'Select Payment Method',
-              style: TextStyle(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold
-              ),
-            ),
-            SizedBox(height: 10),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  children: [
-                    RadioListTile<String>(
-                      title: Text(
-                        'Credit/Debit Card',
-                        style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                      ),
-                      value: 'Credit/Debit Card',
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value;
-                        });
-                      },
-                      activeColor: Color(0xFF2A9D8F),
-                    ),
-                    RadioListTile<String>(
-                      title: Text(
-                        'JazzCash',
-                        style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                      ),
-                      value: 'JazzCash',
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value;
-                        });
-                      },
-                      activeColor: Color(0xFF2A9D8F),
-                    ),
-                    RadioListTile<String>(
-                      title: Text(
-                        'Easypaisa',
-                        style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                      ),
-                      value: 'Easypaisa',
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value;
-                        });
-                      },
-                      activeColor: Color(0xFF2A9D8F),
                     ),
                   ],
                 ),

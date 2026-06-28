@@ -1,98 +1,179 @@
-// lib/screens/verify_phone_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/screens/email_verification_screen.dart';
 
 class VerifyPhoneScreen extends StatefulWidget {
   final String mode; // 'signup' or 'reset_password'
+  final String phone;
+  final String email;
+  final String userName;
 
-  // Constructor with default parameter
-  const VerifyPhoneScreen({Key? key, this.mode = 'signup'}) : super(key: key);
+  const VerifyPhoneScreen({
+    Key? key,
+    this.mode = 'signup',
+    this.phone = '',
+    this.email = '',
+    this.userName = '',
+  }) : super(key: key);
 
   @override
   _VerifyPhoneScreenState createState() => _VerifyPhoneScreenState();
 }
 
 class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
-  List<TextEditingController> controllers = List.generate(6, (index) => TextEditingController());
-  List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
+  final List<TextEditingController> _controllers =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+
+  bool _isVerifying = false;
+  bool _isResending = false;
+  bool _canResend = false;
+  int _resendCountdown = 60;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+    _sendOTP();
+  }
 
   @override
   void dispose() {
-    for (var controller in controllers) {
-      controller.dispose();
-    }
-    for (var node in focusNodes) {
-      node.dispose();
-    }
+    for (final c in _controllers) c.dispose();
+    for (final f in _focusNodes) f.dispose();
     super.dispose();
+  }
+
+  void _startCountdown() {
+    setState(() { _canResend = false; _resendCountdown = 60; });
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() {
+        if (_resendCountdown > 0) {
+          _resendCountdown--;
+        } else {
+          _canResend = true;
+        }
+      });
+      return _resendCountdown > 0;
+    });
+  }
+
+  Future<void> _sendOTP() async {
+    try {
+      await ApiService.post('/auth/send-phone-otp', {'phone': widget.phone});
+    } catch (_) {
+      // silently ignore on first send — user can retry with resend button
+    }
+  }
+
+  Future<void> _resendOTP() async {
+    if (!_canResend || _isResending) return;
+    setState(() => _isResending = true);
+    try {
+      await ApiService.post('/auth/send-phone-otp', {'phone': widget.phone});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('OTP resent to your phone'),
+        backgroundColor: Colors.green,
+      ));
+      _startCountdown();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to resend: ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    final otp = _controllers.map((c) => c.text).join();
+    if (otp.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please enter the 6-digit OTP'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
+
+    setState(() => _isVerifying = true);
+    try {
+      final response = await ApiService.post('/auth/verify-phone-otp', {
+        'phone': widget.phone,
+        'otp': otp,
+      });
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        if (widget.mode == 'reset_password') {
+          Navigator.pushNamed(context, '/create-new-password');
+        } else {
+          // Proceed to email verification
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EmailVerificationScreen(
+                email: widget.email,
+                userName: widget.userName,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
   }
 
   void _onChanged(String value, int index) {
     if (value.isNotEmpty) {
-      controllers[index].text = value.substring(value.length - 1);
-      if (index < 5) {
-        FocusScope.of(context).requestFocus(focusNodes[index + 1]);
-      }
+      _controllers[index].text = value[value.length - 1];
+      if (index < 5) FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
     }
   }
 
   void _onKeyDown(RawKeyEvent event, int index) {
     if (event.logicalKey == LogicalKeyboardKey.backspace &&
         index > 0 &&
-        controllers[index].text.isEmpty) {
-      FocusScope.of(context).requestFocus(focusNodes[index - 1]);
-    }
-  }
-
-  void _verifyCode() {
-    // Check the mode and navigate accordingly
-    if (widget.mode == 'reset_password') {
-      Navigator.pushNamed(context, '/create-new-password');
-    } else {
-      // Default to signup flow
-      Navigator.pushReplacementNamed(context, '/profile-completion');
+        _controllers[index].text.isEmpty) {
+      FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get screen dimensions and responsive flags
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
-
-    // Calculate responsive sizes
-    final titleFontSize = isSmallScreen ? 20.0 : 24.0;
-    final subtitleFontSize = isSmallScreen ? 14.0 : 16.0;
     final otpFieldSize = isSmallScreen ? 45.0 : 50.0;
-    final otpTextSize = isSmallScreen ? 18.0 : 22.0;
-    final buttonHeight = isSmallScreen ? 45.0 : 50.0;
-    final buttonTextSize = isSmallScreen ? 16.0 : 18.0;
-    final linkTextSize = isSmallScreen ? 14.0 : 16.0;
-    final verticalSpacing = screenHeight * 0.03;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: Colors.black,
-            size: isSmallScreen ? 22 : 24,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          icon: Icon(Icons.arrow_back, color: Colors.black,
+              size: isSmallScreen ? 22 : 24),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.05,
-            vertical: screenHeight * 0.04
-        ),
+            horizontal: screenWidth * 0.05, vertical: screenHeight * 0.04),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -101,111 +182,121 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
               text: TextSpan(
                 text: 'Verify ',
                 style: TextStyle(
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-                children: [
+                    fontSize: isSmallScreen ? 20.0 : 24.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
+                children: const [
                   TextSpan(
-                    text: 'Phone',
-                    style: TextStyle(color: Color(0xFF2A9D8F)),
-                  ),
+                      text: 'Phone',
+                      style: TextStyle(color: Color(0xFF2A9D8F))),
                 ],
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
-              'Code is sent to 123-123-123',
+              'Code sent to ${widget.phone}',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: subtitleFontSize, color: Color(0xFF000000)),
+              style: TextStyle(
+                  fontSize: isSmallScreen ? 14.0 : 16.0,
+                  color: Colors.black54),
             ),
-            SizedBox(height: verticalSpacing),
+            SizedBox(height: screenHeight * 0.03),
 
-            // OTP Input Fields
-            Form(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (index) {
-                  return Container(
-                    width: otpFieldSize,
-                    height: otpFieldSize,
-                    margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 3 : 5),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black54),
-                    ),
-                    alignment: Alignment.center,
-                    child: RawKeyboardListener(
-                      focusNode: FocusNode(),
-                      onKey: (event) => _onKeyDown(event, index),
-                      child: TextField(
-                        controller: controllers[index],
-                        focusNode: focusNodes[index],
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        maxLength: 1,
-                        style: TextStyle(
-                            fontSize: otpTextSize,
-                            fontWeight: FontWeight.bold
-                        ),
-                        decoration: InputDecoration(
-                          counterText: '',
-                          border: InputBorder.none,
-                        ),
-                        onChanged: (value) => _onChanged(value, index),
-                        onTap: () {
-                          controllers[index].selection = TextSelection.fromPosition(
-                            TextPosition(offset: controllers[index].text.length),
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Request Again Link
-            GestureDetector(
-              onTap: () {
-                // Request code again logic
-              },
-              child: RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  text: "Didn't receive code? ",
-                  style: TextStyle(fontSize: linkTextSize, color: Colors.black),
-                  children: [
-                    TextSpan(
-                      text: 'Request Again',
+            // OTP fields
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(6, (index) {
+                return Container(
+                  width: otpFieldSize,
+                  height: otpFieldSize,
+                  margin: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 3 : 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black54),
+                  ),
+                  alignment: Alignment.center,
+                  child: RawKeyboardListener(
+                    focusNode: FocusNode(),
+                    onKey: (e) => _onKeyDown(e, index),
+                    child: TextField(
+                      controller: _controllers[index],
+                      focusNode: _focusNodes[index],
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 1,
                       style: TextStyle(
-                        color: Color(0xFF2A9D8F),
-                        fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 18.0 : 22.0,
+                          fontWeight: FontWeight.bold),
+                      decoration: const InputDecoration(
+                          counterText: '', border: InputBorder.none),
+                      onChanged: (v) => _onChanged(v, index),
+                      onTap: () {
+                        _controllers[index].selection =
+                            TextSelection.fromPosition(TextPosition(
+                                offset: _controllers[index].text.length));
+                      },
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 20),
+
+            // Resend
+            GestureDetector(
+              onTap: _canResend ? _resendOTP : null,
+              child: _isResending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        text: "Didn't receive code? ",
+                        style: TextStyle(
+                            fontSize: isSmallScreen ? 14.0 : 16.0,
+                            color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: _canResend
+                                ? 'Request Again'
+                                : 'Resend in ${_resendCountdown}s',
+                            style: TextStyle(
+                              color: _canResend
+                                  ? const Color(0xFF2A9D8F)
+                                  : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
-            SizedBox(height: verticalSpacing),
+            SizedBox(height: screenHeight * 0.03),
 
-            // Verify Button
+            // Verify button
             SizedBox(
               width: double.infinity,
-              height: buttonHeight,
+              height: isSmallScreen ? 45.0 : 50.0,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF2A9D8F),
+                  backgroundColor: const Color(0xFF2A9D8F),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                onPressed: _verifyCode,
-                child: Text(
-                  'Verify And Next',
-                  style: TextStyle(fontSize: buttonTextSize, color: Colors.white),
-                ),
+                onPressed: _isVerifying ? null : _verifyCode,
+                child: _isVerifying
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : Text('Verify And Next',
+                        style: TextStyle(
+                            fontSize: isSmallScreen ? 16.0 : 18.0,
+                            color: Colors.white)),
               ),
             ),
           ],

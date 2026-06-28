@@ -1,6 +1,5 @@
 // lib/screens/islamic_donation_screen.dart (NEW SEPARATE PAGE)
 import 'package:flutter/material.dart';
-import 'package:helpinghand/services/api_service.dart';
 
 class IslamicDonationScreen extends StatefulWidget {
   @override
@@ -8,7 +7,6 @@ class IslamicDonationScreen extends StatefulWidget {
 }
 
 class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
-  String _selectedPaymentMethod = 'JazzCash';
   String _selectedDonationType = 'Zakat';
   final TextEditingController _amountController = TextEditingController(text: '1000');
   final TextEditingController _nameController = TextEditingController();
@@ -17,13 +15,6 @@ class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
   final TextEditingController _notesController = TextEditingController();
   bool _isProcessing = false;
   final _formKey = GlobalKey<FormState>();
-
-  final List<Map<String, String>> _paymentMethods = [
-    {'value': 'JazzCash', 'label': 'JazzCash'},
-    {'value': 'Easypaisa', 'label': 'Easypaisa'},
-    {'value': 'Credit/Debit Card', 'label': 'Credit/Debit Card'},
-    {'value': 'Bank Transfer', 'label': 'Bank Transfer'},
-  ];
 
   // Islamic donation types with descriptions
   final List<Map<String, dynamic>> _donationTypes = [
@@ -80,46 +71,45 @@ class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
   }
 
   Future<void> _processIslamicDonation() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isProcessing = true);
+
+    final amount = double.parse(_amountController.text.trim());
+    final donorEmail = _emailController.text.trim();
+    final donorPhone = _phoneController.text.trim();
+    final donorName = _nameController.text.trim();
+
+    final donationType = _donationTypes.firstWhere(
+      (type) => type['value'] == _selectedDonationType,
+      orElse: () => _donationTypes[0],
+    );
+
+    // Step 1: Real payment via Zindigi
+    final paymentResult = await Navigator.pushNamed(
+      context,
+      '/zindigi-payment',
+      arguments: {
+        'amount': amount,
+        'donor_mobile': donorPhone,
+        'donor_email': donorEmail,
+        'donor_name': donorName,
+        'donation_type': 'general', // general charity, not tied to a request
+      },
+    ) as Map<String, dynamic>?;
+
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (paymentResult == null || paymentResult['success'] != true) {
+      if (paymentResult?['cancelled'] != true) {
+        _showError('Payment failed. Please try again.');
+      }
       return;
     }
 
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      // Get the selected donation type details
-      final donationType = _donationTypes.firstWhere(
-            (type) => type['value'] == _selectedDonationType,
-        orElse: () => _donationTypes[0],
-      );
-
-      // Prepare donation data
-      final donationData = {
-        'donation_type': _selectedDonationType,
-        'amount': double.parse(_amountController.text.trim()),
-        'payment_method': _selectedPaymentMethod,
-        'donor_name': _nameController.text.trim(),
-        'donor_phone': _phoneController.text.trim(),
-        'donor_email': _emailController.text.trim(),
-        'notes': _notesController.text.trim(),
-        'category': 'islamic_donation',
-      };
-
-      // Simulate API call (replace with actual API call)
-      await Future.delayed(Duration(seconds: 2));
-
-      // Show success dialog
-      _showSuccessDialog(donationType);
-
-    } catch (e) {
-      _showError('Donation failed: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
+    // Step 2: Show success (no DB endpoint for Islamic donations yet)
+    _showSuccessDialog(donationType);
   }
 
   void _showSuccessDialog(Map<String, dynamic> donationType) {
@@ -387,39 +377,6 @@ class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
                       },
                     ),
                   ],
-                ),
-              ),
-              SizedBox(height: 24),
-
-              // Payment Method Selection
-              Text(
-                "Payment Method",
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2A9D8F),
-                ),
-              ),
-              SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: _paymentMethods.map((method) {
-                    return RadioListTile<String>(
-                      title: Text(method['label']!),
-                      value: method['value']!,
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value!;
-                        });
-                      },
-                      activeColor: Color(0xFF2A9D8F),
-                    );
-                  }).toList(),
                 ),
               ),
               SizedBox(height: 24),

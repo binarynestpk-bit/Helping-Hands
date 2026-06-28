@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Choose the correct baseUrl for your setup:
 
   // For Android Emulator (most common)
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'https://helpinghand-backend.vercel.app/api';
 
   // For iOS Simulator (uncomment if using iOS)
   // static const String baseUrl = 'http://localhost:3000/api';
@@ -14,17 +16,26 @@ class ApiService {
   // static const String baseUrl = 'http://YOUR_COMPUTER_IP:3000/api';
   // Example: static const String baseUrl = 'http://192.168.1.100:3000/api';
 
-  // Simple in-memory token storage (for testing)
   static String? _token;
+  static const _tokenKey = 'auth_token';
 
-  // Get stored token
   static String? getToken() => _token;
 
-  // Store token
-  static void setToken(String token) => _token = token;
+  static void setToken(String token) {
+    _token = token;
+    SharedPreferences.getInstance().then((p) => p.setString(_tokenKey, token));
+  }
 
-  // Remove token
-  static void removeToken() => _token = null;
+  static void removeToken() {
+    _token = null;
+    SharedPreferences.getInstance().then((p) => p.remove(_tokenKey));
+  }
+
+  // Call once at app startup to restore persisted token
+  static Future<void> loadToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString(_tokenKey);
+  }
 
   // Get headers with auth token
   static Map<String, String> getHeaders({bool includeAuth = true}) {
@@ -60,6 +71,48 @@ class ApiService {
       print('❌ Network error: $e');
       if (e.toString().contains('SocketException')) {
         throw Exception('Cannot connect to server. Please check if backend is running.');
+      }
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // POST multipart/form-data with optional file uploads.
+  // [fields] are text fields; [files] maps a backend field name -> local File.
+  static Future<Map<String, dynamic>> postMultipart(
+    String endpoint,
+    Map<String, String> fields, {
+    Map<String, File> files = const {},
+    bool includeAuth = true,
+  }) async {
+    try {
+      print('🌐 Making MULTIPART POST request to: $baseUrl$endpoint');
+      print('📦 Fields: $fields | Files: ${files.keys.toList()}');
+
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
+
+      if (includeAuth && _token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      fields.forEach((key, value) => request.fields[key] = value);
+
+      for (final entry in files.entries) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value.path),
+        );
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📄 Response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('❌ Multipart error: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Cannot connect to server. Please check your connection.');
       }
       throw Exception('Network error: $e');
     }

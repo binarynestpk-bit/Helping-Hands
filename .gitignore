@@ -60,3 +60,8 @@ dashboard/.env.development.local
 dashboard/.env.test.local
 dashboard/.env.production.local
 dashboard/*.log
+
+# Android keystore
+*.jks
+*.keystore
+

@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:helpinghand/widgets/phone_input_field.dart';
 
 class BloodForm extends StatefulWidget {
   @override
@@ -76,6 +77,9 @@ class _BloodFormState extends State<BloodForm> {
     return true;
   }
 
+  // Full E.164 mobile (dial code + number) kept in sync by PhoneInputField.
+  String _fullMobile = '+92';
+
   // FIXED SUBMIT FUNCTION WITH AUTHENTICATION
   Future<void> _submitBloodRequest() async {
     // AUTHENTICATION CHECK - ADDED
@@ -90,6 +94,15 @@ class _BloodFormState extends State<BloodForm> {
 
     if (!_validateForm()) return;
 
+    // The blood units field may contain stray text (e.g. "2 units"); parse digits only.
+    final bloodUnits = int.tryParse(
+      _bloodUnitsController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    if (bloodUnits == null || bloodUnits < 1) {
+      _showSnackBar('Please enter a valid number of blood units (e.g. 2)', isError: true);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -100,11 +113,11 @@ class _BloodFormState extends State<BloodForm> {
         'blood_group': _selectedBloodGroup,
         'hospital_name': _hospitalNameController.text.trim(),
         'location': _locationController.text.trim(),
-        'mobile_number': _mobileNumberController.text.trim(),
+        'mobile_number': _fullMobile,
         'case_type': _selectedCaseType,
         'urgency_level': _selectedUrgencyLevel,
         'required_date': _requiredDateController.text.trim(),
-        'blood_units': int.parse(_bloodUnitsController.text.trim()),
+        'blood_units': bloodUnits,
         'additional_details': _additionalDetailsController.text.trim(),
       };
 
@@ -120,38 +133,119 @@ class _BloodFormState extends State<BloodForm> {
       final response = await ApiService.post('/blood/requests', requestData, includeAuth: true);
 
       if (response['success'] == true) {
-        _showSnackBar('Blood request submitted successfully! Please wait for admin approval.');
-
-        // Navigate to blood requests list after 2 seconds
-        Future.delayed(Duration(seconds: 2), () {
-          Navigator.pushReplacementNamed(context, '/blood-requests-list');
-        });
+        // Show success ON this form; move to the list only after the user taps OK.
+        _showSuccessDialog();
       }
     } catch (e) {
-      // IMPROVED ERROR HANDLING
       String errorMessage = e.toString();
-      if (errorMessage.contains('Access token required') ||
+      final bool isAuthError = errorMessage.contains('Access token required') ||
           errorMessage.contains('401') ||
-          errorMessage.contains('authentication')) {
+          errorMessage.contains('authentication');
+      if (isAuthError) {
         errorMessage = 'Authentication failed. Please login again.';
-        // Navigate to login after showing error
-        Future.delayed(Duration(seconds: 3), () {
-          Navigator.pushReplacementNamed(context, '/signin');
-        });
-      } else if (errorMessage.contains('Network error')) {
-        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorMessage.contains('Network error:')) {
+        errorMessage = errorMessage.replaceFirst('Exception: Network error: ', '');
       }
 
-      _showSnackBar('Error: $errorMessage', isError: true);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      // Show the error ON this form as a dialog, so it cannot linger onto the
+      // next screen the way a SnackBar does when you navigate back.
+      _showErrorDialog(errorMessage);
+
+      if (isAuthError) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) Navigator.pushReplacementNamed(context, '/signin');
+        });
+      }
     } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickRequiredDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null && mounted) {
+      final m = picked.month.toString().padLeft(2, '0');
+      final d = picked.day.toString().padLeft(2, '0');
       setState(() {
-        _isLoading = false;
+        _requiredDateController.text = '${picked.year}-$m-$d';
       });
     }
   }
 
+  void _showSuccessDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Request Submitted'),
+          ],
+        ),
+        content: const Text(
+          'Blood request submitted successfully! Please wait for admin approval.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // close the dialog
+              // Return to the previous screen instead of the public approved-list.
+              if (mounted) Navigator.of(context).pop(true);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Submission Failed'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.red : Colors.green,
@@ -306,13 +400,13 @@ class _BloodFormState extends State<BloodForm> {
                   _patientNameController,
                   context
               ),
-              buildTextField(
-                  "Mobile Number",
-                  "Enter Your Phone Number",
-                  "assets/r-call.png",
-                  _mobileNumberController,
-                  context,
-                  prefixText: "+92 "
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15),
+                child: PhoneInputField(
+                  controller: _mobileNumberController,
+                  isSmallScreen: ResponsiveHelper.isSmallScreen(context),
+                  onChanged: (value) => _fullMobile = value,
+                ),
               ),
               buildDropdownField(
                   "Required Blood Group",
@@ -358,12 +452,17 @@ class _BloodFormState extends State<BloodForm> {
                   "assets/r-medical-report.png",
                   context
               ),
-              buildTextField(
-                  "Required Date",
-                  "Enter required date (e.g., 2025-06-20)",
-                  "assets/r-calendar.png",
-                  _requiredDateController,
-                  context
+              GestureDetector(
+                onTap: _pickRequiredDate,
+                child: AbsorbPointer(
+                  child: buildTextField(
+                    "Required Date",
+                    "Tap to select date",
+                    "assets/r-calendar.png",
+                    _requiredDateController,
+                    context,
+                  ),
+                ),
               ),
               buildDropdownField(
                   "Urgency Level",

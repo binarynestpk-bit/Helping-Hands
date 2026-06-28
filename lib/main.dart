@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:helpinghand/services/notification_service.dart';
+import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 import 'package:helpinghand/screens/splash_screen.dart';
 import 'package:helpinghand/screens/signin_screen.dart';
 import 'package:helpinghand/screens/signup_screen.dart';
@@ -36,9 +38,16 @@ import 'package:helpinghand/blood/my_blood_requests.dart';
 import 'package:helpinghand/screens/view_profile_screen.dart';
 import 'package:helpinghand/screens/edit_profile_screen.dart';
 import 'package:helpinghand/screens/settings_screen.dart';
+import 'package:helpinghand/screens/zindigi_payment_screen.dart';
+import 'package:helpinghand/screens/contact_us_screen.dart';
+import 'package:helpinghand/screens/get_help_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore persisted auth token and user data
+  await ApiService.loadToken();
+  await AuthService.loadUserData();
 
   // Initialize Firebase
   try {
@@ -75,7 +84,7 @@ class MyApp extends StatelessWidget {
 
         // Main screens
         '/home': (context) => HomeScreen(),
-        '/notifications': (context) => NotificationApp(),
+        '/notifications': (context) => NotificationScreen(),
         '/view-profile': (context) => ViewProfileScreen(),
         '/edit-profile': (context) {
           final userData = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -92,7 +101,7 @@ class MyApp extends StatelessWidget {
         '/shaheed-family-form': (context) => RequestShuhadaSupportScreen(),
         '/shaheed-requests': (context) => ShuhadaSupportRequests(),
         '/shaheed-detail': (context) => ShaheedFamilyDetail(),
-        '/shaheed-donation-confirm': (context) => ConfirmDonationApp(),
+        '/shaheed-donation-confirm': (context) => ShaheedConfirmDonationPage(),
         '/my-family-requests': (context) => MyFamilyRequests(), // NEW ROUTE
 
         // Education modules
@@ -112,10 +121,15 @@ class MyApp extends StatelessWidget {
         '/blood-request-detail': (context) => BloodRequestDetail(),
         '/my-blood-requests': (context) => MyBloodRequests(),
 
+        // Payment
+        '/zindigi-payment': (context) => const ZindigiPaymentScreen(),
+        '/contact-us': (context) => const ContactUsScreen(),
+        '/get-help': (context) => const GetHelpScreen(),
+
         // Family support routes (using same shaheed screens with backend)
         '/family-requests': (context) => ShuhadaSupportRequests(),
         '/family-detail': (context) => ShaheedFamilyDetail(),
-        '/family-donation-confirm': (context) => ConfirmDonationApp(),
+        '/family-donation-confirm': (context) => ShaheedConfirmDonationPage(),
       },
     );
   }

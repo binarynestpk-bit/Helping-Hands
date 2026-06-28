@@ -3,6 +3,7 @@ import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/auth_service.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/biometric_service.dart';
+import 'package:helpinghand/services/notification_service.dart';
 import 'package:helpinghand/screens/email_verification_screen.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -79,6 +80,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
         if (user['status'] == 'approved') {
           _showSnackBar('Login successful!');
+          // Update FCM token after successful login
+          NotificationService.updateTokenAfterLogin();
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           _showSnackBar('Account status: ${user['status']}', isError: true);
@@ -119,6 +122,9 @@ class _SignInScreenState extends State<SignInScreen> {
           _showSnackBar('Your account is pending admin approval', isError: true);
         } else if (user['status'] == 'approved') {
           _showSnackBar('Login successful!');
+
+          // Update FCM token after successful login
+          NotificationService.updateTokenAfterLogin();
 
           // Ask to enable biometric if available and not enabled
           if (_hasBiometric && !_biometricEnabled) {

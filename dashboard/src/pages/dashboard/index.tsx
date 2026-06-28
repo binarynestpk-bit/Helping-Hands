@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import StatCard from '@/components/StatCard';
 import { dashboardAPI } from '@/services/api';
+import { formatCurrency } from '@/utils/helpers';
 import {
   Users,
   Droplet,
   GraduationCap,
   Heart,
-  TrendingUp,
+  Wallet,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -15,8 +16,6 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -28,10 +27,23 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = ['#2A9D8F', '#E01219', '#FFC107', '#3B82F6'];
+const COLORS = ['#2A9D8F', '#FFC107', '#3B82F6', '#E01219'];
+
+const EMPTY_STATS = {
+  cards: {
+    users: { total: 0, pending: 0 },
+    blood: { total: 0, pending: 0 },
+    education: { total: 0, pending: 0 },
+    family: { total: 0, pending: 0 },
+  },
+  funds: { total_raised: 0, donations_count: 0 },
+  statusDistribution: { approved: 0, pending: 0, fulfilled: 0 },
+  pendingApprovals: { users: 0, blood: 0, education: 0, family: 0 },
+  monthly: [] as any[],
+};
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<any>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,59 +53,25 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       const response = await dashboardAPI.getStats();
-      setStats(response.data.data);
+      setStats(response.data.data || EMPTY_STATS);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      setStats(EMPTY_STATS);
     } finally {
       setLoading(false);
     }
   };
 
-  const monthlyData = [
-    { month: 'Jan', blood: 45, education: 32, family: 28 },
-    { month: 'Feb', blood: 52, education: 38, family: 31 },
-    { month: 'Mar', blood: 48, education: 45, family: 35 },
-    { month: 'Apr', blood: 61, education: 52, family: 42 },
-    { month: 'May', blood: 55, education: 48, family: 38 },
-    { month: 'Jun', blood: 67, education: 55, family: 45 },
-  ];
+  const cards = stats?.cards || EMPTY_STATS.cards;
+  const funds = stats?.funds || EMPTY_STATS.funds;
+  const statusDistribution = stats?.statusDistribution || EMPTY_STATS.statusDistribution;
+  const pendingApprovals = stats?.pendingApprovals || EMPTY_STATS.pendingApprovals;
+  const monthlyData = stats?.monthly || EMPTY_STATS.monthly;
 
   const statusData = [
-    { name: 'Approved', value: 324 },
-    { name: 'Pending', value: 89 },
-    { name: 'Fulfilled', value: 256 },
-    { name: 'Rejected', value: 42 },
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'user',
-      action: 'New user registration',
-      user: 'Ahmad Khan',
-      time: '5 minutes ago',
-    },
-    {
-      id: 2,
-      type: 'blood',
-      action: 'Blood request approved',
-      user: 'Sara Ahmed',
-      time: '12 minutes ago',
-    },
-    {
-      id: 3,
-      type: 'education',
-      action: 'Education request funded',
-      user: 'Ali Raza',
-      time: '1 hour ago',
-    },
-    {
-      id: 4,
-      type: 'family',
-      action: 'Family support approved',
-      user: 'Fatima Shah',
-      time: '2 hours ago',
-    },
+    { name: 'Approved', value: statusDistribution.approved || 0 },
+    { name: 'Pending', value: statusDistribution.pending || 0 },
+    { name: 'Fulfilled', value: statusDistribution.fulfilled || 0 },
   ];
 
   if (loading) {
@@ -114,20 +92,20 @@ export default function Dashboard() {
           <p className="text-neutral-600 mt-1">Welcome back! Here's what's happening today.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <StatCard
             title="Total Users"
-            value="1,247"
-            change="+12% from last month"
-            changeType="increase"
+            value={cards.users.total.toLocaleString()}
+            change={`${cards.users.pending} pending approval`}
+            changeType="neutral"
             icon={Users}
             iconBgColor="bg-blue-100"
             iconColor="text-blue-600"
           />
           <StatCard
             title="Blood Requests"
-            value="89"
-            change="23 pending approval"
+            value={cards.blood.total.toLocaleString()}
+            change={`${cards.blood.pending} pending`}
             changeType="neutral"
             icon={Droplet}
             iconBgColor="bg-red-100"
@@ -135,21 +113,30 @@ export default function Dashboard() {
           />
           <StatCard
             title="Education Support"
-            value="156"
-            change="+8% from last month"
-            changeType="increase"
+            value={cards.education.total.toLocaleString()}
+            change={`${cards.education.pending} pending`}
+            changeType="neutral"
             icon={GraduationCap}
             iconBgColor="bg-green-100"
             iconColor="text-green-600"
           />
           <StatCard
             title="Family Support"
-            value="73"
-            change="15 active cases"
+            value={cards.family.total.toLocaleString()}
+            change={`${cards.family.pending} pending`}
             changeType="neutral"
             icon={Heart}
             iconBgColor="bg-yellow-100"
             iconColor="text-yellow-600"
+          />
+          <StatCard
+            title="Funds Raised"
+            value={formatCurrency(funds.total_raised || 0)}
+            change={`${funds.donations_count || 0} donations`}
+            changeType="increase"
+            icon={Wallet}
+            iconBgColor="bg-primary-100"
+            iconColor="text-primary-600"
           />
         </div>
 
@@ -224,88 +211,41 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 card p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-neutral-900">Recent Activity</h2>
-              <button className="text-sm font-medium text-primary-500 hover:text-primary-600">
-                View all
-              </button>
-            </div>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
-                >
-                  <div className="flex-shrink-0">
-                    {activity.type === 'user' && (
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-blue-600" />
-                      </div>
-                    )}
-                    {activity.type === 'blood' && (
-                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <Droplet className="w-5 h-5 text-red-600" />
-                      </div>
-                    )}
-                    {activity.type === 'education' && (
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <GraduationCap className="w-5 h-5 text-green-600" />
-                      </div>
-                    )}
-                    {activity.type === 'family' && (
-                      <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-yellow-600" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900">{activity.action}</p>
-                    <p className="text-sm text-neutral-600">{activity.user}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <p className="text-xs text-neutral-500">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-6">Quick Actions</h2>
-            <div className="space-y-3">
-              <button className="w-full btn-primary justify-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button className="btn-primary justify-center">
                 <CheckCircle className="w-5 h-5 mr-2" />
                 Approve Pending
               </button>
-              <button className="w-full btn-secondary justify-center">
+              <button className="btn-secondary justify-center">
                 <Clock className="w-5 h-5 mr-2" />
                 Review Requests
               </button>
-              <button className="w-full btn-secondary justify-center">
+              <button className="btn-secondary justify-center">
                 <AlertCircle className="w-5 h-5 mr-2" />
                 Urgent Cases
               </button>
             </div>
+          </div>
 
-            <div className="mt-8 pt-6 border-t border-neutral-200">
-              <h3 className="text-sm font-semibold text-neutral-900 mb-4">Pending Approvals</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-600">New Users</span>
-                  <span className="badge badge-warning">23</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-600">Blood Requests</span>
-                  <span className="badge badge-danger">12</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-600">Education</span>
-                  <span className="badge badge-info">8</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-600">Family Support</span>
-                  <span className="badge badge-warning">5</span>
-                </div>
+          <div className="card p-6">
+            <h3 className="text-sm font-semibold text-neutral-900 mb-4">Pending Approvals</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">New Users</span>
+                <span className="badge badge-warning">{pendingApprovals.users || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Blood Requests</span>
+                <span className="badge badge-danger">{pendingApprovals.blood || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Education</span>
+                <span className="badge badge-info">{pendingApprovals.education || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Family Support</span>
+                <span className="badge badge-warning">{pendingApprovals.family || 0}</span>
               </div>
             </div>
           </div>

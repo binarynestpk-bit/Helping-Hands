@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/material.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -10,7 +11,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📩 Background message received: ${message.messageId}');
   // Handle background notification
   await NotificationService._handleMessage(message);
-}
+} 
 
 class NotificationService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -365,4 +366,11 @@ class NotificationService {
 
   /// Get FCM token
   static String? getFcmToken() => _fcmToken;
+
+  /// Update FCM token after user login
+  static Future<void> updateTokenAfterLogin() async {
+    if (_fcmToken != null) {
+      await _saveFcmTokenToBackend(_fcmToken!);
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 
 class EducationRequestDetail extends StatefulWidget {
   @override
@@ -398,7 +399,6 @@ class DonationDialog extends StatefulWidget {
 class _DonationDialogState extends State<DonationDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
-  String selectedPaymentMethod = 'jazzcash';
   bool isProcessing = false;
 
   @override
@@ -408,59 +408,62 @@ class _DonationDialogState extends State<DonationDialog> {
   }
 
   Future<void> _processDonation() async {
+    if (!AuthService.isLoggedIn()) {
+      Navigator.of(context).pop();
+      Navigator.pushReplacementNamed(context, '/signin');
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      isProcessing = true;
-    });
+    final amount = double.parse(_amountController.text);
+    final userData = AuthService.getUserData();
+    final donorEmail = userData?['email']?.toString() ?? '';
+    final donorPhone = (userData?['phone'] ?? userData?['mobile'] ?? '').toString();
+    final donorName = userData?['full_name']?.toString() ?? '';
 
-    try {
-      final donationData = {
-        'amount': double.parse(_amountController.text),
-        'payment_method': selectedPaymentMethod,
-      };
+    // Step 1: Real payment via Zindigi
+    final paymentResult = await Navigator.pushNamed(
+      context,
+      '/zindigi-payment',
+      arguments: {
+        'amount': amount,
+        'donor_mobile': donorPhone,
+        'donor_email': donorEmail,
+        'donor_name': donorName,
+        'donation_type': 'education',
+        'request_id': widget.request['id'].toString(),
+      },
+    ) as Map<String, dynamic>?;
 
-      final response = await ApiService.post(
-        '/education/donate/${widget.request['id']}',
-        donationData,
-        includeAuth: true,
-      );
+    if (!mounted) return;
 
-      if (response['success']) {
-        Navigator.of(context).pop();
-        widget.onDonationComplete();
-
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Success!'),
-                ],
-              ),
-              content: Text(response['message'] ?? 'Thank you for your donation!'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('OK'),
-                ),
-              ],
-            );
-          },
+    if (paymentResult == null || paymentResult['success'] != true) {
+      if (paymentResult?['cancelled'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment failed. Please try again.'), backgroundColor: Colors.red),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() {
-        isProcessing = false;
-      });
+      return;
     }
+
+    // Payment confirmed server-side. The backend records the donation and
+    // updates the request's funding status once Zindigi confirms the payment.
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    widget.onDonationComplete();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(children: [
+          Icon(Icons.check_circle, color: Colors.green),
+          SizedBox(width: 8),
+          Text('Success!'),
+        ]),
+        content: const Text('Thank you for your donation!'),
+        actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
+      ),
+    );
   }
 
   @override
@@ -473,7 +476,16 @@ class _DonationDialogState extends State<DonationDialog> {
           topRight: Radius.circular(20),
         ),
       ),
-      padding: EdgeInsets.all(20),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        // Keep the buttons clear of the phone's system navigation bar AND the
+        // keyboard, so taps land on the buttons instead of the nav bar.
+        bottom: 20 +
+            MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom,
+      ),
       child: Form(
         key: _formKey,
         child: Column(
@@ -495,24 +507,6 @@ class _DonationDialogState extends State<DonationDialog> {
                 if (value == null || value.isEmpty) return 'Amount required';
                 if (double.tryParse(value) == null) return 'Invalid amount';
                 return null;
-              },
-            ),
-            SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: selectedPaymentMethod,
-              decoration: InputDecoration(
-                labelText: 'Payment Method',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                DropdownMenuItem(value: 'jazzcash', child: Text('JazzCash')),
-                DropdownMenuItem(value: 'easypaisa', child: Text('Easypaisa')),
-                DropdownMenuItem(value: 'bank_transfer', child: Text('Bank Transfer')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedPaymentMethod = value!;
-                });
               },
             ),
             SizedBox(height: 20),

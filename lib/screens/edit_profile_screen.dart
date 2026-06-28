@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/widgets/phone_input_field.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -21,6 +22,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _permanentAddressController;
   late TextEditingController _phoneController;
 
+  // Full E.164 mobile (dial code + number) kept in sync by PhoneInputField.
+  String _fullMobile = '+92';
+  String _initialDialCode = '+92';
+
   String? _selectedBloodGroup;
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -32,7 +37,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _cityController = TextEditingController(text: widget.userData?['city'] ?? '');
     _currentAddressController = TextEditingController(text: widget.userData?['current_address'] ?? '');
     _permanentAddressController = TextEditingController(text: widget.userData?['permanent_address'] ?? '');
-    _phoneController = TextEditingController(text: widget.userData?['phone'] ?? '');
+    final existingPhone = (widget.userData?['phone'] ?? '').toString();
+    final split = PhoneInputField.split(existingPhone);
+    _initialDialCode = split.$1;
+    _phoneController = TextEditingController(text: split.$2);
+    _fullMobile = existingPhone.isNotEmpty ? existingPhone : _initialDialCode;
     _selectedBloodGroup = widget.userData?['blood_group'];
   }
 
@@ -61,7 +70,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'city': _cityController.text.trim(),
         'current_address': _currentAddressController.text.trim(),
         'permanent_address': _permanentAddressController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': _fullMobile,
         if (_selectedBloodGroup != null) 'blood_group': _selectedBloodGroup,
       };
 
@@ -132,11 +141,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 icon: Icons.location_city,
               ),
               SizedBox(height: 16),
-              _buildTextField(
+              PhoneInputField(
                 controller: _phoneController,
+                initialDialCode: _initialDialCode,
                 label: 'Phone',
-                icon: Icons.phone,
-                keyboardType: TextInputType.phone,
+                onChanged: (value) => _fullMobile = value,
               ),
               SizedBox(height: 16),
               _buildBloodGroupDropdown(),

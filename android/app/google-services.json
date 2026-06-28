@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "8601456734",
+    "project_id": "helpinghand-447ee",
+    "storage_bucket": "helpinghand-447ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8601456734:android:f3c2efbe9e52028763a4cf",
+        "android_client_info": {
+          "package_name": "com.example.helpinghand"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBff1Nb_hrpRVnsO9wdmCBGKn0wYHL0gw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8601456734:android:7fbd013d4205cb7663a4cf",
+        "android_client_info": {
+          "package_name": "com.trustinghand.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBff1Nb_hrpRVnsO9wdmCBGKn0wYHL0gw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

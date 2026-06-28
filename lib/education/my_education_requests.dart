@@ -12,11 +12,13 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   List<dynamic> myRequests = [];
   bool isLoading = true;
   String selectedFilter = 'all';
+  String? errorMessage;
 
   final Map<String, String> statusFilters = {
-    'all': 'All Requests',
+    'all': 'All',
     'pending': 'Pending',
     'approved': 'Approved',
+    'partially_funded': 'Partially Funded',
     'funded': 'Funded',
     'rejected': 'Rejected',
     'cancelled': 'Cancelled',
@@ -50,24 +52,17 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
         throw Exception(response['message'] ?? 'Failed to load requests');
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Access token required') ||
-          errorMessage.contains('401') ||
-          errorMessage.contains('authentication')) {
+      String err = e.toString();
+      if (err.contains('401') || err.contains('Access token required') ||
+          err.contains('403') || err.contains('access denied') ||
+          err.contains('authentication') || err.contains('approved')) {
         Navigator.pushReplacementNamed(context, '/signin');
         return;
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading requests: $errorMessage'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        isLoading = false;
+        errorMessage = err;
+      });
     }
   }
 
@@ -76,7 +71,7 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
       return myRequests;
     }
     return myRequests.where((request) =>
-    (request['status'] ?? '').toString().toLowerCase() == selectedFilter
+      _deriveStatus(request) == selectedFilter
     ).toList();
   }
 
@@ -176,14 +171,25 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
           // Requests List
           Expanded(
             child: isLoading
+                ? Center(child: CircularProgressIndicator(color: Color(0xFF2A9D8F)))
+                : errorMessage != null
                 ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF2A9D8F)),
-                  SizedBox(height: 16),
-                  Text('Loading your requests...'),
-                ],
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    SizedBox(height: 12),
+                    Text(errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: Colors.red[700])),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () { setState(() { errorMessage = null; }); _loadMyRequests(); },
+                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF2A9D8F)),
+                      child: Text('Retry', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               ),
             )
                 : filteredRequests.isEmpty
@@ -247,7 +253,7 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   }
 
   Widget _buildRequestCard(dynamic request) {
-    final status = request['status'] ?? 'pending';
+    final status = _deriveStatus(request);
 
     return Card(
       margin: EdgeInsets.only(bottom: 16),
@@ -396,10 +402,7 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implement cancel functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Cancel feature coming soon')),
-              );
+              _cancelRequest(request['id'].toString(), reasonController.text);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
@@ -409,35 +412,58 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
     );
   }
 
+  Future<void> _cancelRequest(String requestId, String reason) async {
+    try {
+      final response = await ApiService.put('/education/requests/$requestId/cancel', {
+        'reason': reason,
+      });
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Request cancelled successfully'), backgroundColor: Colors.orange),
+        );
+        _loadMyRequests();
+      } else {
+        throw Exception(response['message'] ?? 'Failed to cancel');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'funded':
-        return Colors.blue;
-      case 'rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
+      case 'pending': return Colors.orange;
+      case 'approved': return Colors.green;
+      case 'partially_funded': return Colors.teal;
+      case 'funded': return Colors.blue;
+      case 'rejected': return Colors.red;
+      case 'cancelled': return Colors.grey;
+      default: return Colors.grey;
     }
   }
 
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
-        return 'Approved';
-      case 'pending':
-        return 'Pending Approval';
-      case 'funded':
-        return 'Funded';
-      case 'rejected':
-        return 'Rejected';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status.toUpperCase();
+      case 'pending': return 'Pending Approval';
+      case 'approved': return 'Approved';
+      case 'partially_funded': return 'Partially Funded';
+      case 'funded': return 'Fully Funded';
+      case 'rejected': return 'Rejected';
+      case 'cancelled': return 'Cancelled';
+      default: return status.toUpperCase();
     }
+  }
+
+  String _deriveStatus(dynamic request) {
+    final base = (request['status'] ?? 'pending').toString().toLowerCase();
+    if (base == 'approved') {
+      final total = _safeToDouble(request['total_donated']);
+      final fee = _safeToDouble(request['fee_amount']);
+      if (total >= fee && fee > 0) return 'funded';
+      if (total > 0) return 'partially_funded';
+    }
+    return base;
   }
 }
