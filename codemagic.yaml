@@ -17,9 +17,6 @@ workflows:
     integrations:
       app_store_connect: codemagic_app_store   # <-- name of your API key in Codemagic
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.trustinghand.app
       vars:
         APP_STORE_APPLE_ID: 6804291546          # your app's numeric Apple ID
         BUNDLE_ID: "com.trustinghand.app"
@@ -35,8 +32,13 @@ workflows:
           cd ios
           gem install xcodeproj --no-document
           ruby add_firebase_plist.rb
-      - name: Set up code signing
+      - name: Fetch/create signing files
         script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
           xcode-project use-profiles
       - name: Install CocoaPods dependencies
         script: |
