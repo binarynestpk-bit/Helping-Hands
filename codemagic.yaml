@@ -1,0 +1,59 @@
+# Codemagic CI/CD — builds the iOS app on a cloud Mac and publishes to
+# App Store Connect (TestFlight). No local Mac required.
+#
+# Before the first run, in the Codemagic UI you must:
+#   1. Connect this Git repository.
+#   2. Add your App Store Connect API key under Teams/Settings → Integrations →
+#      "App Store Connect", and give it a reference name (used below as
+#      "codemagic_app_store").
+#   3. Make sure the app record exists in App Store Connect with bundle id
+#      com.trustinghand.app, and put its numeric Apple ID in APP_STORE_APPLE_ID.
+
+workflows:
+  ios-release:
+    name: iOS App Store Release
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    integrations:
+      app_store_connect: codemagic_app_store   # <-- name of your API key in Codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.trustinghand.app
+      vars:
+        APP_STORE_APPLE_ID: 0000000000          # <-- your app's numeric Apple ID
+        BUNDLE_ID: "com.trustinghand.app"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Add GoogleService-Info.plist to Xcode project
+        script: |
+          cd ios
+          gem install xcodeproj --no-document
+          ruby add_firebase_plist.rb
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=4.4.0 \
+            --build-number=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1))
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Send builds to TestFlight for testing first:
+        submit_to_testflight: true
+        # Set to true later, when you're ready to push to the public App Store:
+        submit_to_app_store: false

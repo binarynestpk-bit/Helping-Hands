@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -54,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const GuestBanner(),
             // Profile section
             Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -669,7 +671,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    "Minahil",
+                    AuthService.getUserName(),
                     style: TextStyle(
                       fontSize: isSmallScreen ? 20 : 24,
                       fontWeight: FontWeight.bold,
@@ -677,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    "Trusted Member",
+                    AuthService.getUserData()?['email']?.toString() ?? 'Trusted Member',
                     style: TextStyle(
                       fontSize: isSmallScreen ? 14 : 16,
                       color: Colors.white.withOpacity(0.8),

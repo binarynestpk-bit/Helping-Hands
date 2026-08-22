@@ -241,7 +241,11 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   void _handleGuestLogin() {
-    // Handle guest login functionality
+    // Enter guest mode with NO session. isGuest() relies on there being no auth
+    // token, and the backend also rejects every authenticated call — so a guest
+    // truly cannot read or write protected data.
+    ApiService.removeToken();
+    AuthService.clearUserData();
     _showSnackBar('Accessing as guest...');
     Navigator.pushReplacementNamed(context, '/home');
     // You can also navigate to a specific guest route if needed:

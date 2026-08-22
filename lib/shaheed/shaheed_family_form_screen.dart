@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:helpinghand/widgets/phone_input_field.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class RequestShuhadaSupportScreen extends StatefulWidget {
   @override
@@ -208,6 +210,9 @@ class _RequestShuhadaSupportScreenState extends State<RequestShuhadaSupportScree
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Request Shuhada Support');
+    }
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
 

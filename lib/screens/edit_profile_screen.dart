@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/widgets/phone_input_field.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -29,6 +33,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedBloodGroup;
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
+  final ImagePicker _picker = ImagePicker();
+  File? _pickedImage;
+  String? _profileImageUrl;
+  bool _uploadingImage = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +52,98 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _phoneController = TextEditingController(text: split.$2);
     _fullMobile = existingPhone.isNotEmpty ? existingPhone : _initialDialCode;
     _selectedBloodGroup = widget.userData?['blood_group'];
+    _profileImageUrl = widget.userData?['profile_image_url']?.toString();
+  }
+
+  Widget _buildAvatarPicker() {
+    ImageProvider? img;
+    if (_pickedImage != null) {
+      img = FileImage(_pickedImage!);
+    } else if (_profileImageUrl != null && _profileImageUrl!.startsWith('http')) {
+      img = NetworkImage(_profileImageUrl!);
+    }
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 55,
+          backgroundColor: const Color(0xFF2A9D8F).withOpacity(0.15),
+          backgroundImage: img,
+          child: img == null
+              ? const Icon(Icons.person, size: 55, color: Color(0xFF2A9D8F))
+              : null,
+        ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: GestureDetector(
+            onTap: _uploadingImage ? null : _pickProfileImage,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF2A9D8F),
+                shape: BoxShape.circle,
+              ),
+              child: _uploadingImage
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      if (picked == null) return;
+      setState(() {
+        _pickedImage = File(picked.path);
+        _uploadingImage = true;
+      });
+      final response = await ApiService.postMultipart(
+        '/user/profile-image',
+        {},
+        files: {'profile_image': File(picked.path)},
+        includeAuth: true,
+      );
+      if (!mounted) return;
+      if (response['success'] == true) {
+        setState(() {
+          _profileImageUrl = response['data']?['profile_image_url']?.toString();
+          _uploadingImage = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated'), backgroundColor: Colors.green),
+        );
+      } else {
+        setState(() => _uploadingImage = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']?.toString() ?? 'Upload failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not upload image. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -103,6 +204,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Edit Profile');
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -117,6 +221,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(child: _buildAvatarPicker()),
+              const SizedBox(height: 24),
               _buildTextField(
                 controller: _fullNameController,
                 label: 'Full Name',

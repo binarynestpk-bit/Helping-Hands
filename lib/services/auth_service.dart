@@ -108,4 +108,9 @@ class AuthService {
     final token = ApiService.getToken();
     return token != null;
   }
+
+  // A guest is anyone browsing without a logged-in account (no auth token).
+  // Security is enforced by the backend too: no token = no access to any
+  // authenticated endpoint. This flag only drives the UI restrictions.
+  static bool isGuest() => !isLoggedIn();
 }

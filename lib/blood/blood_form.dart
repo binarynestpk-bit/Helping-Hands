@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:helpinghand/widgets/phone_input_field.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class BloodForm extends StatefulWidget {
   @override
@@ -361,6 +362,9 @@ class _BloodFormState extends State<BloodForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Request Blood');
+    }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(

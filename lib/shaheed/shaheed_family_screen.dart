@@ -1,6 +1,7 @@
 // lib/shaheed/shaheed_family_screen.dart - UPDATED WITH MY REQUESTS BUTTON
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class ShuhadaFamilySupportApp extends StatelessWidget {
   @override
@@ -44,6 +45,7 @@ class ShuhadaFamilySupportApp extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              const GuestBanner(),
               // Hero Image
               Image.asset(
                 'assets/shuhada_family_support.png',

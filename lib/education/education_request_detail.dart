@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class EducationRequestDetail extends StatefulWidget {
   @override
@@ -69,6 +70,9 @@ class _EducationRequestDetailState extends State<EducationRequestDetail> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Request Details');
+    }
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
 
     if (request == null) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class EducationRequestsList extends StatefulWidget {
   @override
@@ -17,7 +18,11 @@ class _EducationRequestsListState extends State<EducationRequestsList> {
   @override
   void initState() {
     super.initState();
-    _loadEducationRequests();
+    if (!AuthService.isGuest()) {
+      _loadEducationRequests();
+    } else {
+      isLoading = false;
+    }
   }
 
   @override
@@ -129,6 +134,7 @@ class _EducationRequestsListState extends State<EducationRequestsList> {
       ),
       body: Column(
         children: [
+          const GuestBanner(),
           // Search Bar
           Container(
             padding: EdgeInsets.all(16),
@@ -156,7 +162,9 @@ class _EducationRequestsListState extends State<EducationRequestsList> {
 
           // Requests List
           Expanded(
-            child: isLoading
+            child: AuthService.isGuest()
+                ? const GuestLockedView(message: 'Log in to view requests')
+                : isLoading
                 ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

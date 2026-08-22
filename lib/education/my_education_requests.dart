@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class MyEducationRequests extends StatefulWidget {
   @override
@@ -27,7 +28,11 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
   @override
   void initState() {
     super.initState();
-    _loadMyRequests();
+    if (!AuthService.isGuest()) {
+      _loadMyRequests();
+    } else {
+      isLoading = false;
+    }
   }
 
   Future<void> _loadMyRequests() async {
@@ -129,6 +134,7 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
       ),
       body: Column(
         children: [
+          const GuestBanner(),
           // Status Filter - Horizontal Scrolling Chips (like blood module)
           Container(
             height: 50,
@@ -170,7 +176,9 @@ class _MyEducationRequestsState extends State<MyEducationRequests> {
 
           // Requests List
           Expanded(
-            child: isLoading
+            child: AuthService.isGuest()
+                ? const GuestLockedView(message: 'Log in to view requests')
+                : isLoading
                 ? Center(child: CircularProgressIndicator(color: Color(0xFF2A9D8F)))
                 : errorMessage != null
                 ? Center(

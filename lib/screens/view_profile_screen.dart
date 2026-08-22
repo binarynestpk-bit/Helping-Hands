@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class ViewProfileScreen extends StatefulWidget {
   @override
@@ -47,6 +49,9 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Profile');
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(

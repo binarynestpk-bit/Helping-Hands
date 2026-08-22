@@ -8,6 +8,7 @@ import {
   Heart,
   Handshake,
   Inbox,
+  UserX,
   Bell,
   Settings,
   LogOut,
@@ -53,6 +54,7 @@ const allMenuItems = [
   { icon: Heart,           label: 'Family Support',     path: '/dashboard/family-requests',    roles: ['super_admin', 'family_admin'] },
   { icon: Handshake,       label: 'Partners',           path: '/dashboard/partners',           roles: ['super_admin'] },
   { icon: Inbox,           label: 'Partner Requests',   path: '/dashboard/partner-requests',   roles: ['super_admin'] },
+  { icon: UserX,           label: 'Account Deletions',  path: '/dashboard/deletion-requests',  roles: ['super_admin'] },
 ];
 
 export default function Layout({ children }: LayoutProps) {

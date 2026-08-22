@@ -1,5 +1,7 @@
 // lib/screens/islamic_donation_screen.dart (NEW SEPARATE PAGE)
 import 'package:flutter/material.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class IslamicDonationScreen extends StatefulWidget {
   @override
@@ -178,6 +180,9 @@ class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Donate');
+    }
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 

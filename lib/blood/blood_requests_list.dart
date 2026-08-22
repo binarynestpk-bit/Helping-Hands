@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BloodRequestsList extends StatefulWidget {
@@ -17,7 +19,11 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
   @override
   void initState() {
     super.initState();
-    _loadBloodRequests();
+    if (!AuthService.isGuest()) {
+      _loadBloodRequests();
+    } else {
+      isLoading = false;
+    }
   }
 
   Future<void> _loadBloodRequests() async {
@@ -344,6 +350,7 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
       ),
       body: Column(
         children: [
+          const GuestBanner(),
           // Search Bar
           Container(
             padding: EdgeInsets.all(16),
@@ -378,7 +385,9 @@ class _BloodRequestsListState extends State<BloodRequestsList> {
 
           // Content
           Expanded(
-            child: isLoading
+            child: AuthService.isGuest()
+                ? const GuestLockedView(message: 'Log in to view requests')
+                : isLoading
                 ? Center(child: CircularProgressIndicator())
                 : filteredRequests.isEmpty
                 ? Center(

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Helpinghand</string>
+	<string>Trusting Hand</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,5 +47,11 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>We need Face ID or Touch ID to authenticate you securely and provide quick access to your account.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera so you can take and upload photos for your requests and profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library so you can upload documents and images for your requests and profile.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app uses your location so you can attach a hospital or request location to help donors reach you.</string>
 </dict>
 </plist>

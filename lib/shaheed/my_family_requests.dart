@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class MyFamilyRequests extends StatefulWidget {
   const MyFamilyRequests({Key? key}) : super(key: key);
@@ -33,7 +34,11 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
   @override
   void initState() {
     super.initState();
-    _loadMyRequests();
+    if (!AuthService.isGuest()) {
+      _loadMyRequests();
+    } else {
+      isLoading = false;
+    }
   }
 
   Future<void> _loadMyRequests() async {
@@ -120,6 +125,7 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
       ),
       body: Column(
         children: [
+          const GuestBanner(),
           // Status Filter
           Container(
             height: 50,
@@ -162,7 +168,9 @@ class _MyFamilyRequestsState extends State<MyFamilyRequests> {
 
           // Content
           Expanded(
-            child: RefreshIndicator(
+            child: AuthService.isGuest()
+                ? const GuestLockedView(message: 'Log in to view requests')
+                : RefreshIndicator(
               onRefresh: _refreshRequests,
               child: _buildContent(),
             ),

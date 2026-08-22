@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class BloodRequestDetail extends StatefulWidget {
   @override
@@ -23,6 +25,9 @@ class _BloodRequestDetailState extends State<BloodRequestDetail> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Request Details');
+    }
     if (requestData == null) {
       return Scaffold(
         appBar: AppBar(title: Text('Blood Request Detail')),
@@ -166,9 +171,10 @@ class _BloodRequestDetailState extends State<BloodRequestDetail> {
                   child: ElevatedButton.icon(
                     onPressed: () => _donateBlood(),
                     icon: Icon(Icons.favorite, color: Colors.white),
-                    label: Text('Donate Blood'),
+                    label: Text('Donate Blood', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFE01219),
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),

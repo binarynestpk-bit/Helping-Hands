@@ -6,6 +6,7 @@ import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart'; // ONLY ADDED FOR AUTHENTICATION
 import 'package:helpinghand/widgets/phone_input_field.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class RequestEducationSupport extends StatefulWidget {
   @override
@@ -31,7 +32,26 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
   // Files for uploads
   File? _resultAttachment;
   File? _feeAttachment;
-  bool _isSubmitting = false; // Added loading state
+  bool _isSubmitting = false;
+
+  Future<void> _pickRequiredDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.light(primary: Color(0xFF2A9D8F)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      _dateController.text =
+          '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    }
+  }
 
   final ImagePicker _picker = ImagePicker();
 
@@ -205,6 +225,9 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Request Education Support');
+    }
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
 
@@ -268,7 +291,36 @@ class _RequestEducationSupportState extends State<RequestEducationSupport> {
             ),
             buildTextField("Fee Amount", null, "Enter required fee amount", _feeAmountController, isSmallScreen),
             buildDescriptionField("Reason for Donation", "Explain why you need support", _reasonController, isSmallScreen),
-            buildTextField("Required Date", "assets/calendar.png", "Enter required date (e.g., March 5, 2025)", _dateController, isSmallScreen),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Required Date",
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 5),
+                GestureDetector(
+                  onTap: _pickRequiredDate,
+                  child: AbsorbPointer(
+                    child: TextField(
+                      controller: _dateController,
+                      decoration: InputDecoration(
+                        hintText: "Tap to select date",
+                        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: isSmallScreen ? 12 : 14),
+                        prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF2A9D8F), size: 20),
+                        suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFECECEC))),
+                        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF2A9D8F))),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 15),
+              ],
+            ),
             buildUploadBox(
               "Previous Result Attachment",
               "Upload previous result (PDF, IMAGE)",

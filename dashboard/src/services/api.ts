@@ -99,6 +99,12 @@ export const partnerApplicationsAPI = {
   delete: (id: string) => apiClient.delete(`/admin/partner-applications/${id}`),
 };
 
+export const deletionRequestsAPI = {
+  getAll: () => apiClient.get('/admin/deletion-requests'),
+  complete: (id: string) => apiClient.put(`/admin/deletion-requests/${id}/complete`),
+  delete: (id: string) => apiClient.delete(`/admin/deletion-requests/${id}`),
+};
+
 export const dashboardAPI = {
   getStats: () => apiClient.get('/admin/dashboard/stats'),
   getRecentActivity: () => apiClient.get('/admin/dashboard/activity'),

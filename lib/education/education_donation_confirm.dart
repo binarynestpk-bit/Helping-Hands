@@ -1,6 +1,8 @@
 // lib/education/education_donation_confirm.dart
 import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
+import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class EducationConfirmDonationApp extends StatelessWidget {
   @override
@@ -28,6 +30,9 @@ class _ConfirmDonationPageState extends State<ConfirmDonationPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (AuthService.isGuest()) {
+      return const GuestLockedScaffold(title: 'Donate');
+    }
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = ResponsiveHelper.isSmallScreen(context);
 

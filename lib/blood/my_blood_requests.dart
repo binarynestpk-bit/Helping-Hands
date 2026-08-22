@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:helpinghand/utils/responsive_helper.dart';
 import 'package:helpinghand/services/api_service.dart';
 import 'package:helpinghand/services/auth_service.dart';
+import 'package:helpinghand/widgets/guest_access.dart';
 
 class MyBloodRequests extends StatefulWidget {
   const MyBloodRequests({Key? key}) : super(key: key);
@@ -27,7 +28,11 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
   @override
   void initState() {
     super.initState();
-    _loadMyRequests();
+    if (!AuthService.isGuest()) {
+      _loadMyRequests();
+    } else {
+      isLoading = false;
+    }
   }
 
   Future<void> _loadMyRequests() async {
@@ -98,6 +103,7 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
       ),
       body: Column(
         children: [
+          const GuestBanner(),
           // Status Filter
           Container(
             height: 50,
@@ -140,7 +146,9 @@ class _MyBloodRequestsState extends State<MyBloodRequests> {
 
           // Content
           Expanded(
-            child: RefreshIndicator(
+            child: AuthService.isGuest()
+                ? const GuestLockedView(message: 'Log in to view requests')
+                : RefreshIndicator(
               onRefresh: _refreshRequests,
               child: _buildContent(),
             ),

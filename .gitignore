@@ -65,3 +65,8 @@ dashboard/*.log
 *.jks
 *.keystore
 
+
+# Local submission documents (contain reviewer credentials) - keep out of git
+/Trusting Hand App Overview.txt
+/Trusting-Hand-App-Overview.html
+/privacy-policy.html
