@@ -35,10 +35,18 @@ workflows:
       - name: Fetch/create signing files
         script: |
           keychain initialize
+          # --certificate-key uses a PERSISTENT private key (stored as the
+          # CERTIFICATE_PRIVATE_KEY env var in Codemagic) so every build
+          # regenerates the SAME valid distribution certificate. Without this,
+          # each throwaway build machine makes a cert whose private key is lost
+          # after the build, breaking signing on the next run.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
             --create
           keychain add-certificates
+          # Confirm a valid codesigning identity is actually present:
+          security find-identity -v -p codesigning
           xcode-project use-profiles
       - name: Install CocoaPods dependencies
         script: |
