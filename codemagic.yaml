@@ -42,8 +42,8 @@ workflows:
           # wiped afterwards). Apple limits how many distribution certificates
           # you can have, so delete the stale ones to guarantee we can create a
           # fresh, valid certificate this build.
-          echo "=== Removing stale iOS Distribution certificates ==="
-          for CID in $(app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null | jq -r '.[].id'); do
+          echo "=== Removing existing certificates (stale ones from earlier builds have no private key) ==="
+          for CID in $(app-store-connect certificates list --json 2>/dev/null | jq -r '.[].id // empty'); do
             echo "Deleting certificate $CID"
             app-store-connect certificates delete "$CID" || true
           done
