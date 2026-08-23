@@ -17,6 +17,8 @@ workflows:
     integrations:
       app_store_connect: codemagic_app_store   # <-- name of your API key in Codemagic
     environment:
+      groups:
+        - code_signing   # <-- must contain CERTIFICATE_PRIVATE_KEY (the persistent signing key)
       vars:
         APP_STORE_APPLE_ID: 6804291546          # your app's numeric Apple ID
         BUNDLE_ID: "com.trustinghand.app"
@@ -53,6 +55,7 @@ workflows:
           echo "=== Creating certificate + provisioning profile ==="
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
             --create
 
           keychain add-certificates
