@@ -17,8 +17,6 @@ workflows:
     integrations:
       app_store_connect: codemagic_app_store   # <-- name of your API key in Codemagic
     environment:
-      groups:
-        - code_signing   # <-- Codemagic variable group holding CERTIFICATE_PRIVATE_KEY
       vars:
         APP_STORE_APPLE_ID: 6804291546          # your app's numeric Apple ID
         BUNDLE_ID: "com.trustinghand.app"
@@ -34,21 +32,34 @@ workflows:
           cd ios
           gem install xcodeproj --no-document
           ruby add_firebase_plist.rb
-      - name: Fetch/create signing files
+      - name: Set up code signing
         script: |
+          set -e
           keychain initialize
-          # --certificate-key uses a PERSISTENT private key (stored as the
-          # CERTIFICATE_PRIVATE_KEY env var in Codemagic) so every build
-          # regenerates the SAME valid distribution certificate. Without this,
-          # each throwaway build machine makes a cert whose private key is lost
-          # after the build, breaking signing on the next run.
+
+          # Earlier failed builds may have left iOS Distribution certificates in
+          # the Apple account whose private keys are gone (each build machine is
+          # wiped afterwards). Apple limits how many distribution certificates
+          # you can have, so delete the stale ones to guarantee we can create a
+          # fresh, valid certificate this build.
+          echo "=== Removing stale iOS Distribution certificates ==="
+          for CID in $(app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null | jq -r '.[].id'); do
+            echo "Deleting certificate $CID"
+            app-store-connect certificates delete "$CID" || true
+          done
+
+          # Create a fresh distribution certificate (its private key lives on
+          # THIS machine for THIS build) plus the App Store provisioning profile.
+          echo "=== Creating certificate + provisioning profile ==="
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
             --create
+
           keychain add-certificates
-          # Confirm a valid codesigning identity is actually present:
+
+          echo "=== Valid codesigning identities now in the keychain ==="
           security find-identity -v -p codesigning
+
           xcode-project use-profiles
       - name: Install CocoaPods dependencies
         script: |
