@@ -20,8 +20,8 @@ workflows:
       vars:
         APP_STORE_APPLE_ID: 6804291546          # your app's numeric Apple ID
         BUNDLE_ID: "com.trustinghand.app"
-      flutter: stable
-      xcode: latest
+      flutter: 3.29.3
+      xcode: 16.2
       cocoapods: default
     scripts:
       - name: Get Flutter packages
