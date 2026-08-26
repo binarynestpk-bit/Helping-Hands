@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cd \"/c/Users/hp/StudioProjects/HelpingHand\" && sed -i 's/com\\\\.example\\\\.helpinghand/com.trustinghand.app/g' ios/Runner.xcodeproj/project.pbxproj && echo \"bundle id updated to:\" && grep -h \"PRODUCT_BUNDLE_IDENTIFIER\" ios/Runner.xcodeproj/project.pbxproj | sort -u)"
+      "Bash(cd \"/c/Users/hp/StudioProjects/HelpingHand\" && sed -i 's/com\\\\.example\\\\.helpinghand/com.trustinghand.app/g' ios/Runner.xcodeproj/project.pbxproj && echo \"bundle id updated to:\" && grep -h \"PRODUCT_BUNDLE_IDENTIFIER\" ios/Runner.xcodeproj/project.pbxproj | sort -u)",
+      "Bash(flutter pub *)",
+      "Read(//c/Users/hp/Downloads/**)"
     ]
   }
 }
