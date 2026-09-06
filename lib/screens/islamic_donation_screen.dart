@@ -87,31 +87,23 @@ class _IslamicDonationScreenState extends State<IslamicDonationScreen> {
       orElse: () => _donationTypes[0],
     );
 
-    // Step 1: Real payment via Zindigi
-    final paymentResult = await Navigator.pushNamed(
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    // Manual bank-transfer flow (general charity — not tied to a request).
+    await Navigator.pushNamed(
       context,
-      '/zindigi-payment',
+      '/manual-donation',
       arguments: {
         'amount': amount,
         'donor_mobile': donorPhone,
         'donor_email': donorEmail,
         'donor_name': donorName,
-        'donation_type': 'general', // general charity, not tied to a request
+        'donation_type': 'general',
+        'cause_title': '${donationType['label']} (${donationType['arabicName']})',
       },
-    ) as Map<String, dynamic>?;
-
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (paymentResult == null || paymentResult['success'] != true) {
-      if (paymentResult?['cancelled'] != true) {
-        _showError('Payment failed. Please try again.');
-      }
-      return;
-    }
-
-    // Step 2: Show success (no DB endpoint for Islamic donations yet)
-    _showSuccessDialog(donationType);
+    );
+    // The manual-donation screen handles submission + confirmation itself.
   }
 
   void _showSuccessDialog(Map<String, dynamic> donationType) {

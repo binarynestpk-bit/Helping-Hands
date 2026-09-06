@@ -85,30 +85,21 @@ class _ShaheedConfirmDonationPageState extends State<ShaheedConfirmDonationPage>
       final donorPhone = (userData?['phone'] ?? userData?['mobile'] ?? '').toString();
       final donorName = userData?['full_name']?.toString() ?? '';
 
-      final paymentResult = await Navigator.pushNamed(
+      await Navigator.pushNamed(
         context,
-        '/zindigi-payment',
+        '/manual-donation',
         arguments: {
           'amount': amount,
           'donor_mobile': donorPhone,
           'donor_email': donorEmail,
           'donor_name': donorName,
           'donation_type': 'family',
-          'donation_option': _selectedDonationType,
           'request_id': _familyRequest!['id'].toString(),
+          'cause_title': (_familyRequest!['family_name'] ?? _familyRequest!['family_head_name'] ?? 'this family').toString(),
         },
-      ) as Map<String, dynamic>?;
-
-      if (!mounted) return;
-
-      if (paymentResult == null || paymentResult['success'] != true) {
-        if (paymentResult?['cancelled'] != true) {
-          _showErrorDialog('Payment failed. Please try again.');
-        }
-        return;
-      }
-
-      _showSuccessDialog(amountStr);
+      );
+      // The manual-donation screen handles the account details, screenshot
+      // upload, submission and confirmation itself.
     } catch (e) {
       if (mounted) _showErrorDialog('An error occurred. Please try again.');
     }

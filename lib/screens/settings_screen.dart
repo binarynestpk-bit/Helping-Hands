@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helpinghand/services/api_service.dart';
+import 'package:helpinghand/services/auth_service.dart';
 import 'package:helpinghand/services/biometric_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -120,6 +121,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: 'Sign out of your account',
             titleColor: Colors.red,
             onTap: () => _showLogoutDialog(context),
+          ),
+          _buildSettingTile(
+            icon: Icons.delete_forever,
+            title: 'Delete Account',
+            subtitle: 'Permanently delete your account and data',
+            titleColor: Colors.red,
+            onTap: () => _showDeleteAccountDialog(context),
           ),
         ],
       ),
@@ -458,6 +466,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
               backgroundColor: Colors.red,
             ),
             child: Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'This will permanently delete your account and personal data. '
+          'This action cannot be undone.\n\nAre you sure you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF2A9D8F)),
+                ),
+              );
+              try {
+                await ApiService.delete('/user/account');
+                AuthService.clearUserData();
+                ApiService.removeToken();
+                if (!context.mounted) return;
+                Navigator.pop(context); // close loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (okCtx) => AlertDialog(
+                    title: const Text('Account Deleted'),
+                    content: const Text(
+                      'Your account and personal data have been permanently deleted.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(okCtx);
+                          Navigator.pushNamedAndRemoveUntil(
+                              context, '/signin', (route) => false);
+                        },
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                Navigator.pop(context); // close loading
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Failed to delete account: ${e.toString().replaceFirst('Exception: ', '')}',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

@@ -15,6 +15,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  HandCoins,
+  Landmark,
 } from 'lucide-react';
 import { notificationsAPI } from '@/services/api';
 
@@ -55,6 +57,8 @@ const allMenuItems = [
   { icon: Handshake,       label: 'Partners',           path: '/dashboard/partners',           roles: ['super_admin'] },
   { icon: Inbox,           label: 'Partner Requests',   path: '/dashboard/partner-requests',   roles: ['super_admin'] },
   { icon: UserX,           label: 'Account Deletions',  path: '/dashboard/deletion-requests',  roles: ['super_admin'] },
+  { icon: HandCoins,       label: 'Donation Proofs',    path: '/dashboard/donation-proofs',    roles: ['super_admin', 'education_admin', 'family_admin'] },
+  { icon: Landmark,        label: 'Donation Accounts',  path: '/dashboard/donation-accounts',  roles: ['super_admin'] },
 ];
 
 export default function Layout({ children }: LayoutProps) {

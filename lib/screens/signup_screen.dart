@@ -44,12 +44,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
+      final phoneDigits = _phoneController.text.trim();
       final response = await ApiService.post('/auth/register', {
         'full_name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
-        'phone': '$_selectedCountryCode${_phoneController.text.trim()}',
+        // Phone & country are optional — only send them if provided.
+        if (phoneDigits.isNotEmpty) 'phone': '$_selectedCountryCode$phoneDigits',
         'password': _passwordController.text,
-        'city': _selectedCity,
+        if (_selectedCity != null) 'city': _selectedCity,
       });
 
       setState(() {
@@ -97,14 +99,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _validateInputs() {
     // Basic validation
+    // Phone number and country are optional (App Store guideline 5.1.1(v)).
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
-        _phoneController.text.isEmpty ||
         _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty ||
-        _selectedCity == null) {
+        _confirmPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fill in all fields')),
+        SnackBar(content: Text('Please fill in your name, email and password')),
       );
       return false;
     }
@@ -428,7 +429,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Mobile Number',
+          'Mobile Number (optional)',
           style: TextStyle(
             fontSize: isSmallScreen ? 14 : 16,
             fontWeight: FontWeight.bold,
@@ -720,7 +721,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Country',
+          'Country (optional)',
           style: TextStyle(
             fontSize: isSmallScreen ? 14 : 16,
             fontWeight: FontWeight.bold,

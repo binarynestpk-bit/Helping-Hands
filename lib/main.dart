@@ -38,7 +38,8 @@ import 'package:helpinghand/blood/my_blood_requests.dart';
 import 'package:helpinghand/screens/view_profile_screen.dart';
 import 'package:helpinghand/screens/edit_profile_screen.dart';
 import 'package:helpinghand/screens/settings_screen.dart';
-import 'package:helpinghand/screens/zindigi_payment_screen.dart';
+// import 'package:helpinghand/screens/zindigi_payment_screen.dart'; // DISABLED: payment gateway hidden (App Store 3.2.2). Restore with the route below.
+import 'package:helpinghand/screens/manual_donation_screen.dart';
 import 'package:helpinghand/screens/contact_us_screen.dart';
 import 'package:helpinghand/screens/get_help_screen.dart';
 
@@ -121,8 +122,10 @@ class MyApp extends StatelessWidget {
         '/blood-request-detail': (context) => BloodRequestDetail(),
         '/my-blood-requests': (context) => MyBloodRequests(),
 
-        // Payment
-        '/zindigi-payment': (context) => const ZindigiPaymentScreen(),
+        // Payment gateway — DISABLED (hidden until org is an approved nonprofit).
+        // '/zindigi-payment': (context) => const ZindigiPaymentScreen(),
+        // Manual bank-transfer donation flow (replacement for the gateway)
+        '/manual-donation': (context) => const ManualDonationScreen(),
         '/contact-us': (context) => const ContactUsScreen(),
         '/get-help': (context) => const GetHelpScreen(),
 

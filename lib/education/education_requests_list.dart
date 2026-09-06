@@ -561,10 +561,12 @@ class _DonationDialogState extends State<DonationDialog> {
     final donorPhone = (userData?['phone'] ?? userData?['mobile'] ?? '').toString();
     final donorName = userData?['full_name']?.toString() ?? '';
 
-    // Step 1: Process real payment through Zindigi
-    final paymentResult = await Navigator.pushNamed(
-      context,
-      '/zindigi-payment',
+    // Open the manual bank-transfer screen. Close this donation dialog first,
+    // capturing the navigator so we don't use a defunct dialog context.
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.pushNamed(
+      '/manual-donation',
       arguments: {
         'amount': amount,
         'donor_mobile': donorPhone,
@@ -572,36 +574,8 @@ class _DonationDialogState extends State<DonationDialog> {
         'donor_name': donorName,
         'donation_type': 'education',
         'request_id': widget.request['id'].toString(),
+        'cause_title': (widget.request['student_name'] ?? widget.request['institution_name'] ?? 'this education request').toString(),
       },
-    ) as Map<String, dynamic>?;
-
-    if (!mounted) return;
-
-    if (paymentResult == null || paymentResult['success'] != true) {
-      if (paymentResult?['cancelled'] != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment failed. Please try again.'), backgroundColor: Colors.red),
-        );
-      }
-      return;
-    }
-
-    // Payment confirmed server-side. The backend records the donation and
-    // updates the request's funding status once Zindigi confirms the payment.
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    widget.onDonationComplete();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(children: [
-          Icon(Icons.check_circle, color: Colors.green),
-          SizedBox(width: 8),
-          Text('Donation Successful!'),
-        ]),
-        content: const Text('Thank you for your donation!'),
-        actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
-      ),
     );
   }
 

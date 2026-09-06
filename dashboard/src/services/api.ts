@@ -105,6 +105,21 @@ export const deletionRequestsAPI = {
   delete: (id: string) => apiClient.delete(`/admin/deletion-requests/${id}`),
 };
 
+export const donationProofsAPI = {
+  getAll: (params?: any) => apiClient.get('/admin/donation-proofs', { params }),
+  approve: (id: string, data?: { amount?: number | string; note?: string }) =>
+    apiClient.post(`/admin/donation-proofs/${id}/approve`, data || {}),
+  reject: (id: string, note?: string) =>
+    apiClient.post(`/admin/donation-proofs/${id}/reject`, { note }),
+};
+
+export const donationAccountsAPI = {
+  getAll: () => apiClient.get('/admin/donation-accounts'),
+  create: (data: any) => apiClient.post('/admin/donation-accounts', data),
+  update: (id: string, data: any) => apiClient.put(`/admin/donation-accounts/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/admin/donation-accounts/${id}`),
+};
+
 export const dashboardAPI = {
   getStats: () => apiClient.get('/admin/dashboard/stats'),
   getRecentActivity: () => apiClient.get('/admin/dashboard/activity'),
